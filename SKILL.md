@@ -1,68 +1,149 @@
 ---
 name: leadgenius-cli
-description: LeadGenius Pro Automation API and CLI skill. Use when working with the LeadGenius Pro platform — managing leads, clients, companies, users, webhooks, enrichment tasks, scoring, FSD pipelines, or any API integration. Covers all /api/automation/* endpoints, the `lgp` CLI tool, API key authentication, and common workflows like lead import, enrichment, deduplication, and full-stack demand generation.
+description: Comprehensive skill for operating the LeadGenius Pro Automation API and lgp CLI. Covers ICP management, FSD pipeline automation, lead generation/enrichment/scoring, user provisioning, territory analysis, webhook management, and email platform integration.
 ---
 
-# LeadGenius Pro — Automation API & CLI
+# LeadGenius Pro — CLI & Automation API Skill
 
-Base URL: `https://api.leadgenius.app`
-CLI: `npx tsx src/scripts/lgp.ts <command> [options]`
+This skill teaches AI agents how to operate the **LeadGenius Pro Automation API** and the **`lgp` CLI tool**. It covers the full lifecycle of B2B lead management — from ICP (Ideal Customer Profile) definition and automated lead generation through enrichment, scoring, qualification, and email delivery via the FSD (Full-Stack Demand) pipeline.
+
+## Base URL
+
+```
+https://api.leadgenius.app
+```
+
+All API endpoints live under `/api/automation/`.
 
 ## Authentication
 
-Every request requires an `X-API-Key` header with an `lgp_*` prefixed key. The key determines company scope, owner identity, and rate limits.
+Every request must include an API key in the `X-API-Key` header:
 
-```bash
-curl -H "X-API-Key: lgp_YOUR_KEY" https://api.leadgenius.app/api/automation/auth/test
+```
+X-API-Key: lgp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-For CLI, set environment variables:
-```bash
-export LGP_API_KEY="lgp_your_key"
-export LGP_URL="https://api.leadgenius.app"
-```
+- Keys are prefixed with `lgp_` and tied to a specific company.
+- The key determines `company_id`, `owner` identity, and rate limits.
+- Keys are created via `POST /api/automation/users/provision` — the plain-text key is returned only once at creation time.
+- Test your key with `GET /api/automation/auth/test`.
 
-## API Sections
+### Rate Limits
 
-For detailed endpoint docs with request/response schemas, see the reference files:
+| Window     | Default Limit    |
+|------------|------------------|
+| Per minute | 60 requests      |
+| Per hour   | 1,000 requests   |
+| Per day    | 10,000 requests  |
 
-- **Leads, Tasks, Companies, Webhooks, Users, Organizations, Tables, Email Platforms, FSD Pipeline**: See [references/api_endpoints.md](references/api_endpoints.md)
-- **Common workflows and use cases**: See [references/workflows.md](references/workflows.md)
-- **CLI command reference**: See [references/cli_reference.md](references/cli_reference.md)
+---
 
-## Quick Reference — Endpoint Map
+## Prerequisites Checklist
 
-| Section | Endpoints | Description |
-|---------|-----------|-------------|
-| Auth | `GET /api/automation/auth/test` | Test API key |
-| Leads | `GET/POST /api/automation/leads/*` | List, import, search, deduplicate, transfer, activities |
-| Tasks | `GET/POST /api/automation/tasks/*` | Enrichment, copyright, scoring jobs |
-| Companies | `GET/POST /api/automation/companies/*` | Territory companies, events, radar |
-| Webhooks | `GET/PUT/DELETE /api/automation/webhook-events/*` | Webhook log management |
-| Users | `GET/POST/PUT/DELETE /api/automation/users/*` | User + Cognito management |
-| Organizations | `GET/POST/PUT/DELETE /api/automation/companies/manage` | Company CRUD |
-| Tables | `GET/POST/PUT/DELETE /api/automation/tables/{tableName}/*` | Generic CRUD |
-| Email | `GET/POST /api/automation/email-platforms/*` | Platform integration |
-| FSD | `GET/POST/PUT/DELETE /api/automation/fsd/*` | Full-stack demand pipelines |
+Before running enrichment, copyright, scoring, or FSD pipelines, the following configuration records must exist. Create them via the Tables API (`POST /api/automation/tables/{tableName}`).
 
-## Response Format
+### UrlSettings (required for enrichment)
 
-All endpoints return:
-```json
-{
-  "success": true,
-  "data": { ... },
-  "message": "Optional message",
-  "requestId": "uuid-v4"
-}
-```
+| Field                | Description                              |
+|----------------------|------------------------------------------|
+| `companyUrl`         | Company URL lookup service endpoint      |
+| `companyUrl_Apikey`  | API key for company URL service          |
+| `emailFinder`        | Email finder service endpoint            |
+| `emailFinder_Apikey` | API key for email finder service         |
+| `enrichment1`–`enrichment10` | Enrichment service endpoints (up to 10) |
+| `enrichment1_Apikey`–`enrichment10_Apikey` | Corresponding API keys |
 
-Paginated responses add `nextToken` and `count`. Errors return `error`, `details`, and `code` fields.
+### AgentSettings (required for copyright / AI content generation)
 
-## Multi-Tenant Isolation
+| Field                          | Description                                |
+|--------------------------------|--------------------------------------------|
+| `projectId`                    | EpsimoAI project ID                        |
+| `enrichment1AgentId`–`enrichment10AgentId` | EpsimoAI agent IDs for each copyright process |
 
-All data is scoped to the API key's company. The API automatically sets `owner` and `company_id` on created records and filters queries to your company.
+### SdrAiSettings (required for SDR AI scoring)
 
-## Rate Limits
+| Field                          | Description                                |
+|--------------------------------|--------------------------------------------|
+| `projectId`                    | EpsimoAI project ID                        |
+| `aiLeadScoreAgentId`          | Agent for lead scoring                     |
+| `aiQualificationAgentId`      | Agent for qualification assessment         |
+| `aiNextActionAgentId`         | Agent for next-action recommendation       |
+| `aiColdEmailAgentId`          | Agent for cold email generation            |
+| `aiInterestAgentId`           | Agent for interest analysis                |
+| `aiLinkedinConnectAgentId`    | Agent for LinkedIn connect messages        |
+| `aiCompetitorAnalysisAgentId` | Agent for competitor analysis              |
+| `aiEngagementLevelAgentId`    | Agent for engagement level assessment      |
+| `aiPurchaseWindowAgentId`     | Agent for purchase window estimation       |
+| `aiDecisionMakerRoleAgentId`  | Agent for decision-maker role detection    |
+| `aiSentimentAgentId`          | Agent for sentiment analysis               |
+| `aiSocialEngagementAgentId`   | Agent for social engagement scoring        |
+| `aiNurturingStageAgentId`     | Agent for nurturing stage classification   |
+| `aiBudgetEstimationAgentId`   | Agent for budget estimation                |
+| `aiRiskScoreAgentId`          | Agent for risk scoring                     |
+| `aiProductFitScoreAgentId`    | Agent for product-fit scoring              |
 
-60 req/min, 1000 req/hour, 10000 req/day per API key.
+### ICP with Apify Config (required for lead generation)
+
+| Field             | Description                                      |
+|-------------------|--------------------------------------------------|
+| `name`            | ICP display name                                 |
+| `apifyActorId`    | Apify actor ID for lead scraping (required)      |
+| `apifyInput`      | JSON string of actor input configuration         |
+| `apifySettings`   | JSON string of additional Apify settings         |
+| `maxLeads`        | Max leads per generation run (default 100)       |
+| `industries`      | JSON array of target industries                  |
+| `companySizes`    | JSON array of size ranges ("1-10", "51-200")     |
+| `geographies`     | JSON array of countries/regions                  |
+| `jobTitles`       | JSON array of target job titles                  |
+| `seniority`       | JSON array of seniority levels                   |
+| `client_id`       | Client partition for data isolation              |
+
+### Client (required for data isolation)
+
+| Field         | Description                          |
+|---------------|--------------------------------------|
+| `clientName`  | Display name for the client          |
+| `companyURL`  | Company website URL                  |
+| `description` | Client description                   |
+
+### EmailPlatformSettings (required for email delivery)
+
+| Field        | Description                              |
+|--------------|------------------------------------------|
+| `platform`   | Email platform name (e.g., "woodpecker") |
+| `apiKey`     | Platform API key                         |
+| `campaignId` | Default campaign ID on the platform      |
+
+---
+
+## Quick-Reference: Endpoint Map
+
+| API Section         | Reference                                                        |
+|---------------------|------------------------------------------------------------------|
+| Auth                | [references/api_endpoints.md#authentication](references/api_endpoints.md#authentication) |
+| Leads               | [references/api_endpoints.md#leads](references/api_endpoints.md#leads) |
+| Tasks               | [references/api_endpoints.md#tasks](references/api_endpoints.md#tasks) |
+| Territory           | [references/api_endpoints.md#territory-companies](references/api_endpoints.md#territory-companies) |
+| Webhooks            | [references/api_endpoints.md#webhook-events](references/api_endpoints.md#webhook-events) |
+| Users               | [references/api_endpoints.md#users](references/api_endpoints.md#users) |
+| Organizations       | [references/api_endpoints.md#organizations](references/api_endpoints.md#organizations) |
+| Tables / ICP        | [references/api_endpoints.md#tables-generic-crud-with-icp-focus](references/api_endpoints.md#tables-generic-crud-with-icp-focus) |
+| Email Platforms     | [references/api_endpoints.md#email-platforms](references/api_endpoints.md#email-platforms) |
+| FSD Pipeline        | [references/api_endpoints.md#fsd-pipeline](references/api_endpoints.md#fsd-pipeline) |
+| Error Codes         | [references/api_endpoints.md#error-codes](references/api_endpoints.md#error-codes) |
+
+## Quick-Reference: CLI Map
+
+| Command Group      | Reference                                                          |
+|--------------------|--------------------------------------------------------------------|
+| `auth`             | [references/cli_reference.md#auth](references/cli_reference.md#auth) |
+| `leads`            | [references/cli_reference.md#leads](references/cli_reference.md#leads) |
+| `tasks`            | [references/cli_reference.md#tasks](references/cli_reference.md#tasks) |
+| `companies`        | [references/cli_reference.md#companies](references/cli_reference.md#companies) |
+| `webhooks`         | [references/cli_reference.md#webhooks](references/cli_reference.md#webhooks) |
+| `tables`           | [references/cli_reference.md#tables](references/cli_reference.md#tables) |
+| `email-platforms`  | [references/cli_reference.md#email-platforms](references/cli_reference.md#email-platforms) |
+| `users`            | [references/cli_reference.md#users](references/cli_reference.md#users) |
+| `cognito`          | [references/cli_reference.md#cognito](references/cli_reference.md#cognito) |
+| `org`              | [references/cli_reference.md#org](references/cli_reference.md#org) |
+| `fsd`              | [references/cli_reference.md#fsd](references/cli_reference.md#fsd) |
