@@ -17,12 +17,14 @@ npx tsx src/scripts/lgp.ts <command> [options]
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `LGP_API_KEY` | API key with `lgp_` prefix | — (required) |
+| `LGP_ADMIN_KEY` | Admin key to bypass rate limits | — (optional) |
 | `LGP_URL` | Base URL of the LeadGenius API | `http://localhost:3000` |
 
 **Recommended setup:**
 
 ```bash
 export LGP_API_KEY="lgp_your_key_here"
+export LGP_ADMIN_KEY="your_admin_key_here"
 export LGP_URL="https://api.leadgenius.app"
 ```
 
@@ -35,8 +37,11 @@ These options apply to every command and override environment variables when pro
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `--api-key <key>` | string | No | `LGP_API_KEY` env var | API key for authentication (overrides environment variable) |
+| `--admin-key <key>` | string | No | `LGP_ADMIN_KEY` env var | Admin key to bypass rate limits (overrides environment variable) |
 | `--url <url>` | string | No | `LGP_URL` env var or `http://localhost:3000` | Base URL of the LeadGenius API |
 | `--format <fmt>` | string | No | `json` | Output format: `json` or `table` |
+
+When `--admin-key` (or `LGP_ADMIN_KEY`) is set, the CLI sends an `X-Admin-Key` header alongside `X-API-Key`. This bypasses all rate limits. The API key is still required for authentication — the admin key only removes rate limiting.
 
 ---
 

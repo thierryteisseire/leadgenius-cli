@@ -4,10 +4,54 @@ Complete request/response schemas for every LeadGenius Pro Automation API endpoi
 
 **Base URL:** `https://api.leadgenius.app`
 **Authentication:** `X-API-Key: lgp_xxx` header on every request.
+**Admin Bypass:** Optional `X-Admin-Key` header to bypass rate limits (see [Admin Key](#admin-key---rate-limit-bypass) below).
 
 ---
 
 ## Authentication
+
+Every request requires the `X-API-Key` header with a valid AgentApiKey (`lgp_` prefix). This key authenticates the caller and resolves the owner, company, and permissions context.
+
+### Admin Key — Rate Limit Bypass
+
+An optional `X-Admin-Key` header can be sent alongside `X-API-Key` to bypass all rate limits. Both keys are required together — the admin key does not replace the API key.
+
+| Header | Purpose | Required |
+|--------|---------|----------|
+| `X-API-Key` | AgentApiKey — authenticates caller, resolves owner/company | Always |
+| `X-Admin-Key` | Admin secret — bypasses rate limits when valid | Optional |
+
+When the admin key is valid, the response includes `X-RateLimit-Bypass: admin` instead of the normal rate limit headers.
+
+**curl example:**
+
+```bash
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  -H "X-Admin-Key: $LGP_ADMIN_KEY" \
+  https://api.leadgenius.app/api/automation/leads?client_id=YOUR_CLIENT | jq
+```
+
+**CLI equivalent:**
+
+```bash
+LGP_ADMIN_KEY=your_admin_key npx tsx src/scripts/lgp.ts leads list --client YOUR_CLIENT
+```
+
+**Response headers (with admin key):**
+
+```
+X-RateLimit-Bypass: admin
+```
+
+**Response headers (without admin key — normal rate limiting):**
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 59
+X-RateLimit-Reset: 1711000000
+```
+
+---
 
 ### `GET /api/automation/auth/test`
 
@@ -3864,14 +3908,23 @@ Too many requests. The API key has exceeded its rate limit for the current windo
 ```json
 {
   "success": false,
-  "error": "Rate limit exceeded",
-  "details": "60 requests per minute limit reached",
+  "error": "Rate limit exceeded (minute window)",
+  "details": "You have exceeded the 60 requests per minute limit.",
   "code": "RATE_LIMITED",
   "requestId": "req-abc124"
 }
 ```
 
-**Recovery:** Wait for the current rate-limit window to reset and retry. Reduce request frequency or implement exponential back-off. Check the `Retry-After` header if present.
+**Response headers:**
+
+```
+Retry-After: 45
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1711000045
+```
+
+**Recovery:** Wait for the `Retry-After` seconds and retry. Reduce request frequency or implement exponential back-off. Alternatively, use the `X-Admin-Key` header to bypass rate limits entirely (see [Admin Key](#admin-key---rate-limit-bypass)).
 
 ---
 
