@@ -147,3 +147,59 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | `cognito`          | [references/cli_reference.md#cognito](references/cli_reference.md#cognito) |
 | `org`              | [references/cli_reference.md#org](references/cli_reference.md#org) |
 | `fsd`              | [references/cli_reference.md#fsd](references/cli_reference.md#fsd) |
+
+---
+
+## Maintenance CLI (Standalone Node.js Scripts)
+
+Standalone scripts for managing maintenance items (bugs, enhancements). These use raw GraphQL over HTTPS with API key auth from `amplify_outputs.json` — they do NOT go through the Automation API or `lgp` CLI.
+
+### Create a maintenance item
+
+```bash
+node scripts/create-maintenance-item.js --type=BUG --description="Login fails on mobile"
+node scripts/create-maintenance-item.js --type=ENHANCEMENT --description="Add bulk export feature"
+```
+
+| Flag | Required | Values | Description |
+|------|----------|--------|-------------|
+| `--type` | Yes | `BUG`, `ENHANCEMENT` | Item type |
+| `--description` | Yes | string | Description of the issue or request |
+
+### List maintenance items
+
+```bash
+node scripts/list-maintenance-items.js
+node scripts/list-maintenance-items.js --type=BUG
+node scripts/list-maintenance-items.js --type=BUG --status=OPEN
+node scripts/list-maintenance-items.js --company-id=company-xxx
+```
+
+| Flag | Required | Values | Description |
+|------|----------|--------|-------------|
+| `--type` | No | `BUG`, `ENHANCEMENT` | Filter by type |
+| `--status` | No | `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED` | Filter by status |
+| `--company-id` | No | string | Filter by company ID |
+
+### Update a maintenance item
+
+```bash
+node scripts/update-maintenance-item.js --id=<UUID> --status=RESOLVED
+node scripts/update-maintenance-item.js --id=<UUID> --status=CLOSED --description="Fixed in v2.1"
+```
+
+| Flag | Required | Values | Description |
+|------|----------|--------|-------------|
+| `--id` | Yes | UUID | Full maintenance item ID |
+| `--status` | No | `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED` | New status |
+| `--description` | No | string | Updated description |
+
+### Maintenance REST API
+
+There is also a REST API at `/api/maintenance` supporting full CRUD with JWT or API key auth. See the `leadgenius-api` skill for details.
+
+---
+
+## Documentation Site
+
+Docsify-based docs are served at `/docs` (e.g., `https://api.leadgenius.app/docs`). Source files in `/docs/`, copied to `public/docs-content/` at build time.
