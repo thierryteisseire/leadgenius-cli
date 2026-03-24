@@ -2032,3 +2032,399 @@ lgp generate schedule delete <scheduleId>
 ```bash
 npx tsx src/scripts/lgp.ts generate schedule delete sched-uuid
 ```
+
+
+---
+
+## admin backup
+
+Manage DynamoDB backups: discover tables, create/list/describe/delete on-demand backups, restore tables, and manage Point-in-Time Recovery (PITR). All admin backup commands require the `LGP_ADMIN_KEY` environment variable to be set. The CLI sends `X-Admin-Key` header on every admin request for authentication.
+
+> **Note:** The admin CLI uses Python (`lgp.py`) and communicates with `/api/admin/backups/*` endpoints. All commands support the `--json` flag for raw JSON output.
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `LGP_ADMIN_KEY` | Admin secret key for `X-Admin-Key` header | Yes (for all admin commands) |
+
+If `LGP_ADMIN_KEY` is not set, the CLI exits with an error message instructing the user to set the variable.
+
+---
+
+### `admin backup tables`
+
+List all DynamoDB tables, optionally filtered by name prefix. Useful for discovering Amplify-managed tables before creating backups.
+
+**Syntax:**
+
+```bash
+lgp admin backup tables [--prefix PREFIX] [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--prefix <PREFIX>` | string | No | — | Filter table names by prefix string |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Example:**
+
+```bash
+lgp admin backup tables
+lgp admin backup tables --prefix Company
+lgp admin backup tables --json
+```
+
+**Expected output (table):**
+
+```
+Table Name
+------------------------------------
+Company-abc123def
+CompanyUser-abc123def
+Client-abc123def
+EnrichLeads-abc123def
+SourceLeads-abc123def
+...
+Found 25 tables
+```
+
+**Expected output (json):**
+
+```json
+{
+  "tables": ["Company-abc123def", "CompanyUser-abc123def", "Client-abc123def"],
+  "count": 3
+}
+```
+
+---
+
+### `admin backup create`
+
+Create an on-demand backup for a single table or all discovered tables.
+
+**Syntax:**
+
+```bash
+lgp admin backup create --table <TABLE> [--json]
+lgp admin backup create --all [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--table <TABLE>` | string | One of `--table` or `--all` | — | DynamoDB table name to back up |
+| `--all` | boolean | One of `--table` or `--all` | `false` | Back up all discovered tables |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted output |
+
+**Backup naming convention:** `<tableName>-<YYYYMMDD>-<HHmmss>` (UTC)
+
+**Example — single table:**
+
+```bash
+lgp admin backup create --table Company-abc123def
+```
+
+**Expected output (single table):**
+
+```json
+{
+  "backup": {
+    "backupArn": "arn:aws:dynamodb:us-east-1:123456789012:table/Company-abc123def/backup/01234567890123-abcdef",
+    "tableName": "Company-abc123def",
+    "backupName": "Company-abc123def-20260315-143022",
+    "backupStatus": "CREATING",
+    "createdAt": "2026-03-15T14:30:22.000Z"
+  }
+}
+```
+
+**Example — all tables:**
+
+```bash
+lgp admin backup create --all
+```
+
+**Expected output (all tables, table format):**
+
+```
+Creating backups for 25 tables...
+✓ Company-abc123          Company-abc123-20260315-143022
+✓ CompanyUser-abc123      CompanyUser-abc123-20260315-143023
+✗ SomeTable-xyz           Table not found
+...
+Summary: 24 succeeded, 1 failed
+```
+
+---
+
+### `admin backup list`
+
+List existing backups with optional table name and status filters.
+
+**Syntax:**
+
+```bash
+lgp admin backup list [--table TABLE] [--status STATUS] [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--table <TABLE>` | string | No | — | Filter backups by table name |
+| `--status <STATUS>` | string | No | — | Filter by status: `AVAILABLE`, `CREATING`, `DELETED` |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Example:**
+
+```bash
+lgp admin backup list
+lgp admin backup list --table Company-abc123def --status AVAILABLE
+lgp admin backup list --json
+```
+
+**Expected output (table):**
+
+```
+ARN (truncated)          Table              Status     Size       Created
+-----------------------  -----------------  ---------  ---------  ----------
+...abc123/backup-001     Company-abc123     AVAILABLE  1.0 MB     2026-03-15
+...abc123/backup-002     CompanyUser-abc    AVAILABLE  512.0 KB   2026-03-15
+```
+
+---
+
+### `admin backup describe`
+
+Get detailed information about a specific backup by ARN.
+
+**Syntax:**
+
+```bash
+lgp admin backup describe --arn <ARN> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--arn <ARN>` | string | Yes | — | Full backup ARN |
+| `--json` | boolean | No | `false` | Output raw JSON instead of key-value pairs |
+
+**Example:**
+
+```bash
+lgp admin backup describe --arn arn:aws:dynamodb:us-east-1:123456789012:table/Company-abc123/backup/01234567890123-abcdef
+```
+
+**Expected output (json):**
+
+```json
+{
+  "backup": {
+    "backupArn": "arn:aws:dynamodb:us-east-1:...",
+    "tableName": "Company-abc123",
+    "tableId": "abc123-def456",
+    "backupStatus": "AVAILABLE",
+    "backupType": "USER",
+    "backupSizeBytes": 1048576,
+    "itemCount": 5000,
+    "createdAt": "2026-03-15T14:30:22.000Z",
+    "expiryDate": null
+  }
+}
+```
+
+---
+
+### `admin backup delete`
+
+Delete a specific backup by ARN.
+
+**Syntax:**
+
+```bash
+lgp admin backup delete --arn <ARN> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--arn <ARN>` | string | Yes | — | Full backup ARN to delete |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted confirmation |
+
+**Example:**
+
+```bash
+lgp admin backup delete --arn arn:aws:dynamodb:us-east-1:123456789012:table/Company-abc123/backup/01234567890123-abcdef
+```
+
+**Expected output (json):**
+
+```json
+{
+  "deleted": {
+    "backupArn": "arn:aws:dynamodb:us-east-1:...",
+    "tableName": "Company-abc123"
+  }
+}
+```
+
+**Error cases:**
+- Backup not found → 404
+- Backup still in CREATING status → 400 "Cannot delete a backup that is still being created"
+
+---
+
+### `admin backup restore`
+
+Restore a table from a backup to a new target table name.
+
+**Syntax:**
+
+```bash
+lgp admin backup restore --arn <ARN> --target-table <NAME> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--arn <ARN>` | string | Yes | — | Full backup ARN to restore from |
+| `--target-table <NAME>` | string | Yes | — | Name for the restored table (must not already exist) |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted output |
+
+**Example:**
+
+```bash
+lgp admin backup restore \
+  --arn arn:aws:dynamodb:us-east-1:123456789012:table/Company-abc123/backup/01234567890123-abcdef \
+  --target-table Company-abc123-restored-20260315
+```
+
+**Expected output (json):**
+
+```json
+{
+  "restored": {
+    "targetTableName": "Company-abc123-restored-20260315",
+    "tableArn": "arn:aws:dynamodb:us-east-1:...",
+    "tableStatus": "CREATING",
+    "sourceBackupArn": "arn:aws:dynamodb:us-east-1:..."
+  }
+}
+```
+
+**Error cases:**
+- Backup not found → 404
+- Target table already exists → 409
+
+---
+
+### `admin backup pitr-status`
+
+Check Point-in-Time Recovery (PITR) status for one or all tables.
+
+**Syntax:**
+
+```bash
+lgp admin backup pitr-status [--table TABLE] [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--table <TABLE>` | string | No | — | Specific table to check; if omitted, checks all tables |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Example:**
+
+```bash
+lgp admin backup pitr-status
+lgp admin backup pitr-status --table Company-abc123def
+lgp admin backup pitr-status --json
+```
+
+**Expected output (table):**
+
+```
+Table Name               PITR     Earliest Restore     Latest Restore
+-----------------------  -------  -------------------  -------------------
+Company-abc123           Enabled  2026-03-10 00:00     2026-03-15 14:30
+CompanyUser-abc123       Disabled -                    -
+```
+
+---
+
+### `admin backup pitr-enable`
+
+Enable Point-in-Time Recovery on a specific table.
+
+**Syntax:**
+
+```bash
+lgp admin backup pitr-enable --table <TABLE>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--table <TABLE>` | string | Yes | — | DynamoDB table name to enable PITR on |
+
+**Example:**
+
+```bash
+lgp admin backup pitr-enable --table Company-abc123def
+```
+
+**Expected output:**
+
+```json
+{
+  "tableName": "Company-abc123def",
+  "pitrEnabled": true,
+  "message": "PITR enabled successfully"
+}
+```
+
+---
+
+### `admin backup pitr-disable`
+
+Disable Point-in-Time Recovery on a specific table.
+
+**Syntax:**
+
+```bash
+lgp admin backup pitr-disable --table <TABLE>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--table <TABLE>` | string | Yes | — | DynamoDB table name to disable PITR on |
+
+**Example:**
+
+```bash
+lgp admin backup pitr-disable --table Company-abc123def
+```
+
+**Expected output:**
+
+```json
+{
+  "tableName": "Company-abc123def",
+  "pitrEnabled": false,
+  "message": "PITR disabled successfully"
+}
+```
