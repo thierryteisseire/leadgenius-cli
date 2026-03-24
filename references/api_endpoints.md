@@ -3858,6 +3858,414 @@ npx tsx src/scripts/lgp.ts fsd status PIPELINE_ID
 
 ---
 
+## Lead Generation
+
+Multi-provider lead generation endpoints. Trigger lead scraping from ICP profiles or direct provider configuration, monitor run status, view history, and manage recurring FSD schedules.
+
+All endpoints use `withAutomationAuth` middleware (`X-API-Key` header). Data is scoped to the caller's `company_id` and `owner`.
+
+Supported providers: `apify`, `vayne`, `generic`.
+
+---
+
+### `POST /api/automation/lead-generation`
+
+Trigger a lead generation run. Supports two modes: ICP-based (resolve provider config from an ICP record) or direct (provide provider and config inline). Only one mode per request.
+
+**Request Body — ICP-based:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `icpId` | string | Yes | — | ICP record ID to use for provider configuration |
+| `clientId` | string | Yes | — | Client ID for lead data isolation |
+| `maxLeads` | integer | No | ICP default | Override max leads per run |
+| `saveToSourceLeads` | boolean | No | `true` | Save scraped leads to SourceLeads table |
+| `saveToEnrichLeads` | boolean | No | `false` | Save scraped leads to EnrichLeads table |
+
+**Request Body — Direct provider:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `provider` | string | Yes | — | Provider name: `apify`, `vayne`, or `generic` |
+| `providerConfig` | object | Yes | — | Provider-specific configuration (see below) |
+| `clientId` | string | Yes | — | Client ID for lead data isolation |
+
+**Vayne `providerConfig`:**
+
+```json
+{
+  "salesNavigatorUrl": "https://www.linkedin.com/sales/search/people?query=...",
+  "maxLeads": 100
+}
+```
+
+**Generic `providerConfig`:**
+
+```json
+{
+  "endpointUrl": "https://api.example.com/scrape",
+  "method": "POST",
+  "headers": { "Authorization": "Bearer xxx" },
+  "bodyTemplate": { "query": "{{keywords}}", "limit": "{{maxLeads}}" },
+  "responseMapping": { "firstName": "first_name", "email": "contact_email" }
+}
+```
+
+**Validation rules:**
+- Cannot provide both `icpId` and `provider`/`providerConfig` → 400 `PROVIDER_CONFIG_CONFLICT`
+- Must provide either ICP-based or direct fields → 400 `VALIDATION_ERROR`
+- Unrecognized `provider` value → 400 `PROVIDER_UNKNOWN`
+- Invalid `salesNavigatorUrl` for Vayne → 400 `INVALID_SALES_NAV_URL`
+- Non-existent `icpId` → 404 `ICP_NOT_FOUND`
+- Insufficient credits → 402 `CREDIT_EXCEEDED`
+
+**Response (201):**
+
+```json
+{
+  "success": true,
+  "runId": "trigger-run-id",
+  "searchHistoryId": "sh-uuid",
+  "status": "initiated",
+  "requestId": "req-uuid"
+}
+```
+
+**curl — ICP-based:**
+
+```bash
+curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"icpId":"ICP_ID","clientId":"CLIENT_ID","maxLeads":200}' \
+  https://api.leadgenius.app/api/automation/lead-generation | jq
+```
+
+**curl — Direct Vayne:**
+
+```bash
+curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"vayne","providerConfig":{"salesNavigatorUrl":"https://www.linkedin.com/sales/search/people?query=...","maxLeads":100},"clientId":"CLIENT_ID"}' \
+  https://api.leadgenius.app/api/automation/lead-generation | jq
+```
+
+**CLI equivalent:**
+
+```bash
+# ICP-based
+npx tsx src/scripts/lgp.ts generate from-icp --icp ICP_ID --client CLIENT_ID --max-leads 200
+
+# Direct Vayne
+npx tsx src/scripts/lgp.ts generate direct --provider vayne --client CLIENT_ID --sales-nav-url "https://www.linkedin.com/sales/search/people?query=..."
+```
+
+---
+
+### `GET /api/automation/lead-generation/{runId}`
+
+Get the current status of a lead generation run. Consolidates data from both the Trigger.dev run and the SearchHistory record.
+
+**Path Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `runId` | string | Yes | Trigger.dev run ID returned from the trigger endpoint |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "runId": "trigger-run-id",
+  "status": "RUNNING",
+  "progress": 45,
+  "totalLeadsFound": 67,
+  "totalLeadsSaved": 45,
+  "totalLeadsFailed": 2,
+  "providerType": "apify",
+  "error": null,
+  "searchHistoryId": "sh-uuid",
+  "requestId": "req-uuid"
+}
+```
+
+**Status values:** `RUNNING`, `COMPLETED`, `FAILED`
+
+**Errors:** 404 `RUN_NOT_FOUND` when `runId` does not match any SearchHistory record.
+
+**curl:**
+
+```bash
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/lead-generation/RUN_ID" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate status RUN_ID
+```
+
+---
+
+### `GET /api/automation/lead-generation/history`
+
+List past lead generation runs for the caller's company. Results are sorted by `createdAt` descending.
+
+**Query Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `clientId` | string | No | — | Filter by client ID |
+| `icpId` | string | No | — | Filter by ICP ID |
+| `status` | string | No | — | Filter by status: `initiated`, `running`, `completed`, `failed` |
+| `limit` | integer | No | 20 | Max records to return |
+| `nextToken` | string | No | — | Pagination token from previous response |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "items": [
+    {
+      "id": "sh-uuid",
+      "searchId": "search-xxx",
+      "searchName": "Lead generation - client-1",
+      "status": "completed",
+      "providerType": "apify",
+      "totalLeadsFound": 150,
+      "totalLeadsSaved": 148,
+      "icpId": "icp-uuid",
+      "clientId": "client-uuid",
+      "createdAt": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "count": 1,
+  "nextToken": null,
+  "requestId": "req-uuid"
+}
+```
+
+**curl:**
+
+```bash
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/lead-generation/history?clientId=CLIENT_ID&limit=10" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate history --client CLIENT_ID --limit 10
+```
+
+---
+
+### `POST /api/automation/lead-generation/schedules`
+
+Create an FSD (Full-Stack Demand) schedule for recurring lead generation from an ICP.
+
+**Request Body:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `icpId` | string | Yes | — | ICP record ID |
+| `clientId` | string | Yes | — | Client ID for lead isolation |
+| `frequency` | string | Yes | — | Cron expression or preset: `daily`, `weekly`, `biweekly`, `monthly` |
+| `maxLeadsPerRun` | integer | No | 100 | Max leads per scheduled run |
+| `saveToSourceLeads` | boolean | No | `true` | Save to SourceLeads table |
+| `saveToEnrichLeads` | boolean | No | `false` | Save to EnrichLeads table |
+
+**Frequency presets:**
+
+| Preset | Cron Expression | Schedule |
+|--------|----------------|----------|
+| `daily` | `0 8 * * *` | 8 AM UTC daily |
+| `weekly` | `0 8 * * 1` | 8 AM UTC Monday |
+| `biweekly` | `0 8 1,15 * *` | 8 AM UTC 1st and 15th |
+| `monthly` | `0 8 1 * *` | 8 AM UTC 1st of month |
+
+Custom cron expressions are also accepted.
+
+**Response (201):**
+
+```json
+{
+  "success": true,
+  "scheduleId": "sched-uuid",
+  "nextRunAt": "2025-01-22T08:00:00Z",
+  "frequency": "weekly",
+  "requestId": "req-uuid"
+}
+```
+
+**curl:**
+
+```bash
+curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"icpId":"ICP_ID","clientId":"CLIENT_ID","frequency":"weekly","maxLeadsPerRun":100}' \
+  https://api.leadgenius.app/api/automation/lead-generation/schedules | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule create --icp ICP_ID --client CLIENT_ID --frequency weekly --max-leads 100
+```
+
+---
+
+### `GET /api/automation/lead-generation/schedules`
+
+List all FSD schedules for the caller's company.
+
+**Query Parameters:** None.
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "items": [
+    {
+      "id": "sched-uuid",
+      "icpId": "icp-uuid",
+      "icpName": "Enterprise SaaS",
+      "clientId": "client-uuid",
+      "clientName": "Q1 Campaign",
+      "frequency": "0 8 * * 1",
+      "frequencyPreset": "weekly",
+      "enabled": true,
+      "status": "active",
+      "nextRunAt": "2025-01-22T08:00:00Z",
+      "lastRunAt": "2025-01-15T08:00:00Z",
+      "lastRunStatus": "completed",
+      "totalRuns": 3,
+      "totalLeadsGenerated": 450,
+      "maxLeadsPerRun": 100,
+      "createdAt": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "count": 1,
+  "requestId": "req-uuid"
+}
+```
+
+**curl:**
+
+```bash
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  https://api.leadgenius.app/api/automation/lead-generation/schedules | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule list
+```
+
+---
+
+### `PATCH /api/automation/lead-generation/schedules/{scheduleId}`
+
+Update an FSD schedule. Use to pause/resume or change frequency and run configuration.
+
+**Path Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `scheduleId` | string | Yes | Schedule record ID |
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `enabled` | boolean | No | `false` to pause, `true` to resume |
+| `frequency` | string | No | New cron expression or preset |
+| `maxLeadsPerRun` | integer | No | New max leads per run |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "scheduleId": "sched-uuid",
+  "enabled": false,
+  "status": "paused",
+  "nextRunAt": null,
+  "requestId": "req-uuid"
+}
+```
+
+**Errors:** 404 `SCHEDULE_NOT_FOUND` when `scheduleId` does not exist.
+
+**curl — pause:**
+
+```bash
+curl -s -X PATCH -H "X-API-Key: $LGP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":false}' \
+  https://api.leadgenius.app/api/automation/lead-generation/schedules/SCHEDULE_ID | jq
+```
+
+**curl — resume:**
+
+```bash
+curl -s -X PATCH -H "X-API-Key: $LGP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":true}' \
+  https://api.leadgenius.app/api/automation/lead-generation/schedules/SCHEDULE_ID | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule pause SCHEDULE_ID
+npx tsx src/scripts/lgp.ts generate schedule resume SCHEDULE_ID
+```
+
+---
+
+### `DELETE /api/automation/lead-generation/schedules/{scheduleId}`
+
+Delete an FSD schedule and cancel any pending runs.
+
+**Path Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `scheduleId` | string | Yes | Schedule record ID |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "Schedule deleted",
+  "scheduleId": "sched-uuid",
+  "requestId": "req-uuid"
+}
+```
+
+**Errors:** 404 `SCHEDULE_NOT_FOUND` when `scheduleId` does not exist.
+
+**curl:**
+
+```bash
+curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
+  https://api.leadgenius.app/api/automation/lead-generation/schedules/SCHEDULE_ID | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule delete SCHEDULE_ID
+```
+
+---
+
 ## Error Codes
 
 All Automation API errors return a consistent JSON envelope with `success: false`, a human-readable `error` message, an optional `details` field, and a machine-readable `code`. Use the `code` field for programmatic error handling.
@@ -4119,6 +4527,138 @@ An internal error occurred while resolving the ICP record. The ICP may exist but
 ```
 
 **Recovery:** Retry the request after a short delay. If the error persists, verify the ICP record exists via `GET /api/automation/tables/ICP/{id}`. Contact support if the issue continues.
+
+---
+
+### `PROVIDER_UNKNOWN`
+
+**HTTP Status:** 400
+
+The specified `provider` value is not a recognized provider name. Supported providers are `apify`, `vayne`, and `generic`.
+
+**Example response:**
+
+```json
+{
+  "success": false,
+  "error": "Unknown provider: 'foo'",
+  "details": "Supported providers: apify, vayne, generic",
+  "code": "PROVIDER_UNKNOWN",
+  "requestId": "req-abc134"
+}
+```
+
+**Recovery:** Use one of the supported provider names: `apify`, `vayne`, or `generic`.
+
+---
+
+### `PROVIDER_CONFIG_CONFLICT`
+
+**HTTP Status:** 400
+
+Both `icpId` and `provider`/`providerConfig` were provided in the same request. Only one mode is allowed per request.
+
+**Example response:**
+
+```json
+{
+  "success": false,
+  "error": "Cannot provide both icpId and provider/providerConfig",
+  "details": "Use either ICP-based or direct provider configuration, not both",
+  "code": "PROVIDER_CONFIG_CONFLICT",
+  "requestId": "req-abc135"
+}
+```
+
+**Recovery:** Remove either `icpId` or the `provider`/`providerConfig` fields from the request.
+
+---
+
+### `INVALID_SALES_NAV_URL`
+
+**HTTP Status:** 400
+
+The `salesNavigatorUrl` provided for a URL-based provider (e.g., Vayne) does not match the expected LinkedIn Sales Navigator URL format.
+
+**Example response:**
+
+```json
+{
+  "success": false,
+  "error": "Invalid Sales Navigator URL",
+  "details": "salesNavigatorUrl must start with https://www.linkedin.com/sales/",
+  "code": "INVALID_SALES_NAV_URL",
+  "requestId": "req-abc136"
+}
+```
+
+**Recovery:** Provide a URL that starts with `https://www.linkedin.com/sales/`.
+
+---
+
+### `SCHEDULE_NOT_FOUND`
+
+**HTTP Status:** 404
+
+The specified schedule ID does not exist or does not belong to the caller's company.
+
+**Example response:**
+
+```json
+{
+  "success": false,
+  "error": "Schedule not found",
+  "details": "No schedule found with ID 'sched-xyz'",
+  "code": "SCHEDULE_NOT_FOUND",
+  "requestId": "req-abc137"
+}
+```
+
+**Recovery:** Verify the schedule ID via `GET /api/automation/lead-generation/schedules`.
+
+---
+
+### `CREDIT_EXCEEDED`
+
+**HTTP Status:** 402
+
+Insufficient credits to start a lead generation run. The credit check is enforced before the provider run starts.
+
+**Example response:**
+
+```json
+{
+  "success": false,
+  "error": "Insufficient credits",
+  "details": "Required: 200, Available: 50",
+  "code": "CREDIT_EXCEEDED",
+  "requestId": "req-abc138"
+}
+```
+
+**Recovery:** Purchase additional credits via the EpsimoAI credit system or reduce the `maxLeads` parameter.
+
+---
+
+### `RUN_NOT_FOUND`
+
+**HTTP Status:** 404
+
+The specified run ID does not match any SearchHistory record.
+
+**Example response:**
+
+```json
+{
+  "success": false,
+  "error": "Run not found",
+  "details": "No lead generation run found with ID 'run-xyz'",
+  "code": "RUN_NOT_FOUND",
+  "requestId": "req-abc139"
+}
+```
+
+**Recovery:** Verify the run ID from the trigger response or check `GET /api/automation/lead-generation/history`.
 
 ---
 

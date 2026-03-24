@@ -123,6 +123,7 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | Auth                | [references/api_endpoints.md#authentication](references/api_endpoints.md#authentication) |
 | Leads               | [references/api_endpoints.md#leads](references/api_endpoints.md#leads) |
 | Tasks               | [references/api_endpoints.md#tasks](references/api_endpoints.md#tasks) |
+| Lead Generation     | [references/api_endpoints.md#lead-generation](references/api_endpoints.md#lead-generation) |
 | Territory           | [references/api_endpoints.md#territory-companies](references/api_endpoints.md#territory-companies) |
 | Webhooks            | [references/api_endpoints.md#webhook-events](references/api_endpoints.md#webhook-events) |
 | Users               | [references/api_endpoints.md#users](references/api_endpoints.md#users) |
@@ -139,6 +140,7 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | `auth`             | [references/cli_reference.md#auth](references/cli_reference.md#auth) |
 | `leads`            | [references/cli_reference.md#leads](references/cli_reference.md#leads) |
 | `tasks`            | [references/cli_reference.md#tasks](references/cli_reference.md#tasks) |
+| `generate`         | [references/cli_reference.md#generate](references/cli_reference.md#generate) |
 | `companies`        | [references/cli_reference.md#companies](references/cli_reference.md#companies) |
 | `webhooks`         | [references/cli_reference.md#webhooks](references/cli_reference.md#webhooks) |
 | `tables`           | [references/cli_reference.md#tables](references/cli_reference.md#tables) |

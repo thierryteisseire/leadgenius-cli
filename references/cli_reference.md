@@ -1752,3 +1752,283 @@ lgp epsimo threads --token <epsimoToken>
 npx tsx src/scripts/lgp.ts epsimo threads --token eyJ...
 npx tsx src/scripts/lgp.ts epsimo threads --token eyJ... --format table
 ```
+
+
+---
+
+## generate
+
+Trigger, monitor, and schedule multi-provider lead generation. Supports ICP-based runs (resolve provider config from an ICP record) and direct provider runs (specify provider and config inline).
+
+### `generate from-icp`
+
+Trigger lead generation from an ICP profile. The ICP's `providerType` determines which provider is used (defaults to `apify`).
+
+**Syntax:**
+
+```bash
+lgp generate from-icp --icp <icpId> --client <clientId> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--icp <icpId>` | string | Yes | — | ICP record ID |
+| `--client <clientId>` | string | Yes | — | Client ID for lead data isolation |
+| `--max-leads <n>` | integer | No | ICP default | Override max leads per run |
+| `--save-to-source` | boolean | No | `true` | Save leads to SourceLeads table |
+| `--save-to-enrich` | boolean | No | `false` | Save leads to EnrichLeads table |
+| `--provider <name>` | string | No | ICP default | Override provider: `apify`, `vayne`, `generic` |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate from-icp \
+  --icp icp_a1b2c3d4-5678-9abc-def0-123456789abc \
+  --client cl_9f3a2b7e \
+  --max-leads 200 \
+  --save-to-enrich
+```
+
+**Expected output (json):**
+
+```json
+{
+  "success": true,
+  "runId": "trigger-run-id",
+  "searchHistoryId": "sh-uuid",
+  "status": "initiated"
+}
+```
+
+### `generate direct`
+
+Trigger lead generation by specifying a provider and configuration directly (without an ICP).
+
+**Syntax:**
+
+```bash
+lgp generate direct --provider <name> --config <json> --client <clientId> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--provider <name>` | string | Yes | — | Provider name: `apify`, `vayne`, `generic` |
+| `--config <json>` | string | Yes | — | JSON string with provider-specific configuration |
+| `--client <clientId>` | string | Yes | — | Client ID for lead data isolation |
+| `--sales-nav-url <url>` | string | No | — | LinkedIn Sales Navigator URL (shorthand for Vayne; injected into `providerConfig.salesNavigatorUrl`) |
+
+**Example — Vayne with Sales Navigator URL:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate direct \
+  --provider vayne \
+  --config '{"maxLeads":100}' \
+  --client cl_9f3a2b7e \
+  --sales-nav-url "https://www.linkedin.com/sales/search/people?query=..."
+```
+
+**Example — Generic HTTP provider:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate direct \
+  --provider generic \
+  --config '{"endpointUrl":"https://api.example.com/scrape","method":"POST","bodyTemplate":{"query":"SaaS","limit":50},"responseMapping":{"firstName":"first_name","email":"contact_email"}}' \
+  --client cl_9f3a2b7e
+```
+
+### `generate status`
+
+Check the status of a lead generation run.
+
+**Syntax:**
+
+```bash
+lgp generate status <runId>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `<runId>` | string (positional) | Yes | — | Run ID from the trigger response |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate status run_abc123def456
+```
+
+**Expected output (json):**
+
+```json
+{
+  "success": true,
+  "runId": "run_abc123def456",
+  "status": "RUNNING",
+  "progress": 45,
+  "totalLeadsFound": 67,
+  "totalLeadsSaved": 45,
+  "totalLeadsFailed": 2,
+  "providerType": "apify",
+  "searchHistoryId": "sh-uuid"
+}
+```
+
+**Table columns (--format table):** `runId`, `status`, `progress`, `totalLeadsFound`, `totalLeadsSaved`, `providerType`
+
+### `generate history`
+
+List past lead generation runs with optional filters.
+
+**Syntax:**
+
+```bash
+lgp generate history [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client <clientId>` | string | No | — | Filter by client ID |
+| `--icp <icpId>` | string | No | — | Filter by ICP ID |
+| `--status <status>` | string | No | — | Filter by status: `initiated`, `running`, `completed`, `failed` |
+| `--limit <n>` | integer | No | 20 | Maximum records to return |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate history --client cl_9f3a2b7e --status completed --limit 10
+```
+
+**Table columns (--format table):** `id`, `searchName`, `status`, `providerType`, `totalLeadsFound`, `totalLeadsSaved`, `createdAt`
+
+### `generate schedule create`
+
+Create an FSD schedule for recurring lead generation.
+
+**Syntax:**
+
+```bash
+lgp generate schedule create --icp <icpId> --client <clientId> --frequency <freq> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--icp <icpId>` | string | Yes | — | ICP record ID |
+| `--client <clientId>` | string | Yes | — | Client ID for lead isolation |
+| `--frequency <freq>` | string | Yes | — | Preset (`daily`, `weekly`, `biweekly`, `monthly`) or cron expression |
+| `--max-leads <n>` | integer | No | 100 | Max leads per scheduled run |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule create \
+  --icp icp_a1b2c3d4-5678-9abc-def0-123456789abc \
+  --client cl_9f3a2b7e \
+  --frequency weekly \
+  --max-leads 150
+```
+
+**Expected output (json):**
+
+```json
+{
+  "success": true,
+  "scheduleId": "sched-uuid",
+  "nextRunAt": "2025-01-22T08:00:00Z",
+  "frequency": "weekly"
+}
+```
+
+### `generate schedule list`
+
+List all FSD schedules for the company.
+
+**Syntax:**
+
+```bash
+lgp generate schedule list
+```
+
+**Flags:** None (uses global options only).
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule list --format table
+```
+
+**Table columns (--format table):** `id`, `icpName`, `clientName`, `frequencyPreset`, `enabled`, `status`, `nextRunAt`, `totalRuns`
+
+### `generate schedule pause`
+
+Pause an active FSD schedule without deleting it.
+
+**Syntax:**
+
+```bash
+lgp generate schedule pause <scheduleId>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `<scheduleId>` | string (positional) | Yes | — | Schedule ID to pause |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule pause sched-uuid
+```
+
+### `generate schedule resume`
+
+Resume a paused FSD schedule.
+
+**Syntax:**
+
+```bash
+lgp generate schedule resume <scheduleId>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `<scheduleId>` | string (positional) | Yes | — | Schedule ID to resume |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule resume sched-uuid
+```
+
+### `generate schedule delete`
+
+Delete an FSD schedule and cancel any pending runs.
+
+**Syntax:**
+
+```bash
+lgp generate schedule delete <scheduleId>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `<scheduleId>` | string (positional) | Yes | — | Schedule ID to delete |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts generate schedule delete sched-uuid
+```
