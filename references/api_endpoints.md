@@ -4266,6 +4266,601 @@ npx tsx src/scripts/lgp.ts generate schedule delete SCHEDULE_ID
 
 ---
 
+## Job Ad Lead Triggering
+
+Bridges the LinkedIn Job Scraper pipeline to the Lead Generation pipeline. When a scrape run completes and new job ads are saved, unique company names are extracted and lead searches are triggered for each company. The scraper integration is fire-and-forget — trigger failures never affect the scraper's success status.
+
+These endpoints use Cognito JWT authentication (browser session), not `X-API-Key`.
+
+---
+
+### `POST /api/trigger/linkedin-jobs/lead-search`
+
+Manually trigger lead searches from a completed scrape run's results. Extracts unique companies from the scraped LinkedIn jobs and triggers the `job-ad-lead-trigger-task` Trigger.dev task.
+
+**Request Body:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `jobId` | string | Yes | — | Scrape run ID to pull LinkedIn jobs from |
+| `max_leads_per_company` | integer | No | 25 | Override max leads per company search |
+| `max_companies_per_run` | integer | No | 10 | Override max companies to trigger per run |
+| `actorId` | string | No | — | Override Apify actor ID for lead generation |
+
+**Flow:**
+1. Authenticate user via Cognito session
+2. Resolve `company_id` from user's company membership
+3. Fetch LinkedInJobs for the scrape run (time-window filtering around job record creation)
+4. Apply multi-tenant filtering by `company_id`
+5. Extract unique companies using `extractUniqueCompanies()`
+6. Trigger `job-ad-lead-trigger-task` with payload
+7. Return trigger run ID and company count
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "triggerRunId": "trigger-run-id",
+  "companiesFound": 15,
+  "jobId": "scrape-job-id",
+  "message": "Lead search triggered for 15 companies from scrape run scrape-job-id"
+}
+```
+
+**Error Responses:**
+
+| Status | Condition |
+|--------|-----------|
+| 400 | Missing or empty `jobId` |
+| 401 | Authentication required (no valid Cognito session) |
+| 404 | No LinkedIn jobs found for the scrape run |
+| 500 | Failed to query LinkedIn jobs or trigger task |
+
+**curl:**
+
+```bash
+curl -s -X POST \
+  -H "Cookie: <cognito-session-cookies>" \
+  -H "Content-Type: application/json" \
+  -d '{"jobId":"SCRAPE_JOB_ID","max_leads_per_company":50,"max_companies_per_run":20}' \
+  https://api.leadgenius.app/api/trigger/linkedin-jobs/lead-search | jq
+```
+
+---
+
+### `GET /api/trigger/linkedin-jobs/lead-search`
+
+List `JobAdLeadTriggerLog` entries with pagination. Query by `client_id` (required) or narrow by `source_job_id`.
+
+**Query Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `client_id` | string | Yes | — | Filter logs by client workspace |
+| `source_job_id` | string | No | — | Filter by specific scrape run ID |
+| `limit` | integer | No | 50 | Page size |
+| `nextToken` | string | No | — | Pagination cursor from previous response |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "items": [
+    {
+      "id": "log-uuid",
+      "source_job_id": "scrape-job-id",
+      "company_name": "Acme Corp",
+      "company_linkedin_url": "https://linkedin.com/company/acme",
+      "lead_generation_run_id": "trigger-run-id",
+      "status": "completed",
+      "leads_found": 12,
+      "error_message": null,
+      "duration_seconds": 180,
+      "client_id": "client-uuid",
+      "company_id": "company-uuid",
+      "owner": "user-sub",
+      "createdAt": "2026-03-01T10:00:00Z"
+    }
+  ],
+  "nextToken": null,
+  "totalCount": 1
+}
+```
+
+**Log status values:** `pending`, `running`, `completed`, `failed`, `timeout`
+
+**Error Responses:**
+
+| Status | Condition |
+|--------|-----------|
+| 400 | Missing `client_id` parameter |
+| 401 | Authentication required |
+
+**curl:**
+
+```bash
+# By client_id
+curl -s -H "Cookie: <cognito-session-cookies>" \
+  "https://api.leadgenius.app/api/trigger/linkedin-jobs/lead-search?client_id=CLIENT_ID&limit=20" | jq
+
+# By source_job_id
+curl -s -H "Cookie: <cognito-session-cookies>" \
+  "https://api.leadgenius.app/api/trigger/linkedin-jobs/lead-search?client_id=CLIENT_ID&source_job_id=SCRAPE_JOB_ID" | jq
+```
+
+---
+
+### `GET /api/trigger/linkedin-jobs/lead-search/config`
+
+Fetch the `JobAdLeadTriggerConfig` for a specific client workspace.
+
+**Query Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `client_id` | string | Yes | Client workspace to fetch config for |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "config": {
+    "id": "config-uuid",
+    "client_id": "client-uuid",
+    "company_id": "company-uuid",
+    "owner": "user-sub",
+    "enabled": true,
+    "actorId": "apify/linkedin-sales-navigator",
+    "max_leads_per_company": 25,
+    "max_companies_per_run": 10,
+    "keyword_filters": "[\"hiring\",\"growth\"]",
+    "createdAt": "2026-01-15T10:00:00Z",
+    "updatedAt": "2026-03-01T10:00:00Z"
+  }
+}
+```
+
+Returns `{ "success": true, "config": null }` when no config exists for the client.
+
+**curl:**
+
+```bash
+curl -s -H "Cookie: <cognito-session-cookies>" \
+  "https://api.leadgenius.app/api/trigger/linkedin-jobs/lead-search/config?client_id=CLIENT_ID" | jq
+```
+
+---
+
+### `PUT /api/trigger/linkedin-jobs/lead-search/config`
+
+Create or update the `JobAdLeadTriggerConfig` for a client workspace. If a config already exists for the `client_id` (and matches the caller's company), it is updated. Otherwise a new config is created.
+
+**Request Body:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `client_id` | string | Yes | — | Client workspace ID |
+| `enabled` | boolean | No | `false` (create) | Enable/disable automatic triggering |
+| `actorId` | string | No | — | Apify actor ID for lead generation |
+| `max_leads_per_company` | integer | No | 25 | Max leads per company search |
+| `max_companies_per_run` | integer | No | 10 | Max companies to trigger per scrape run |
+| `keyword_filters` | string | No | — | JSON array of keyword strings for filtering job titles/descriptions |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "config": {
+    "id": "config-uuid",
+    "client_id": "client-uuid",
+    "company_id": "company-uuid",
+    "owner": "user-sub",
+    "enabled": true,
+    "actorId": "apify/linkedin-sales-navigator",
+    "max_leads_per_company": 50,
+    "max_companies_per_run": 20,
+    "keyword_filters": "[\"hiring\",\"growth\"]",
+    "createdAt": "2026-01-15T10:00:00Z",
+    "updatedAt": "2026-03-01T12:00:00Z"
+  }
+}
+```
+
+**curl:**
+
+```bash
+curl -s -X PUT \
+  -H "Cookie: <cognito-session-cookies>" \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"CLIENT_ID","enabled":true,"max_leads_per_company":50,"max_companies_per_run":20,"keyword_filters":"[\"hiring\",\"growth\"]"}' \
+  https://api.leadgenius.app/api/trigger/linkedin-jobs/lead-search/config | jq
+```
+
+---
+
+### DynamoDB Models
+
+**JobAdLeadTriggerConfig** — Per-client trigger settings
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Primary key (UUID) |
+| `client_id` | string | Client workspace ID |
+| `company_id` | string | Company ID for multi-tenant isolation |
+| `owner` | string | User who created/updated |
+| `enabled` | boolean | Whether automatic triggering is active (default: false) |
+| `actorId` | string | Apify actor ID for lead generation |
+| `max_leads_per_company` | integer | Max leads per company (default: 25) |
+| `max_companies_per_run` | integer | Max companies per run (default: 10) |
+| `keyword_filters` | string | JSON array of keyword strings |
+
+GSI: `client_id` → `jobadleadtriggerconfig-client_id-index`
+
+**JobAdLeadTriggerLog** — Audit trail per company search
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Primary key (UUID) |
+| `source_job_id` | string | Scrape run jobId that triggered this search |
+| `company_name` | string | Company targeted for lead search |
+| `company_linkedin_url` | string | Company LinkedIn URL if available |
+| `lead_generation_run_id` | string | Trigger.dev run ID of the lead generation task |
+| `status` | string | `pending`, `running`, `completed`, `failed`, `timeout` |
+| `leads_found` | integer | Number of leads generated (default: 0) |
+| `error_message` | string | Error details if failed |
+| `duration_seconds` | integer | Time taken for the search |
+| `client_id` | string | Client workspace ID |
+| `company_id` | string | Company ID for multi-tenant isolation |
+| `owner` | string | User who owns this record |
+
+GSIs: `client_id+createdAt` → `jobadleadtriggerlog-client_id-createdAt-index`, `source_job_id` → `jobadleadtriggerlog-source_job_id-index`
+
+---
+
+
+## Lead Notifications (Unipile)
+
+Event-driven notification system that alerts users when lead lifecycle events occur. Notifications are dispatched through Unipile-connected channels (email, Slack, LinkedIn, WhatsApp). All notification calls from lead processing pipelines are fire-and-forget — errors never disrupt lead processing.
+
+These endpoints use Cognito JWT authentication (browser session).
+
+### Key Behaviors
+
+- **60-second batch window**: Leads arriving within 60s for the same company/event type are aggregated into a single notification
+- **5-minute dedup window**: Duplicate notifications (same config + lead + event type) within 5 minutes are skipped
+- **Fire-and-forget**: All notification calls from pipelines are non-blocking; errors are caught silently
+
+### Event Types
+
+| Event Type | Trigger Point |
+|------------|---------------|
+| `new_source_lead` | After `saveLeadsToDatabase` in `lead-scraping-complete-updated.ts` |
+| `new_enrich_lead` | After `saveLeadsToDatabase` when `saveToEnrichLeads` is true |
+| `enrichment_completed` | After successful verification in `enrichmentWorker.ts` |
+| `ai_qualification_changed` | After database update in `company-analysis-task.ts` |
+| `ai_score_changed` | After database update in `company-analysis-task.ts` / `website-qualification-task.ts` |
+| `lead_status_changed` | After status field update |
+
+### Channel Routing
+
+| Channel Types | Dispatch Method |
+|---------------|-----------------|
+| `MAIL`, `GOOGLE_OAUTH`, `OUTLOOK` | `UnipileClient.sendEmail` |
+| `LINKEDIN`, `WHATSAPP`, `SLACK`, `MOBILE` | `UnipileClient.sendMessage` |
+
+---
+
+### `GET /api/lead-notifications/config`
+
+List all `LeadNotificationConfig` records for the authenticated user's company.
+
+**Query Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `accounts` | string | No | Set to `"true"` to return connected Unipile accounts instead of configs |
+
+**Response — Config list (200):**
+
+```json
+{
+  "configs": [
+    {
+      "id": "config-uuid",
+      "company_id": "company-uuid",
+      "owner": "user-sub",
+      "name": "New Lead Alert",
+      "enabled": true,
+      "eventTypes": "[\"new_source_lead\",\"new_enrich_lead\"]",
+      "unipileAccountId": "unipile-account-id",
+      "channelType": "MAIL",
+      "messageTemplate": "New lead: {{lead_name}} at {{lead_company}}",
+      "recipientEmail": "alerts@company.com",
+      "lastTriggeredAt": "2026-03-01T10:00:00Z",
+      "createdAt": "2026-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Response — Unipile accounts (200):**
+
+```json
+{
+  "accounts": [
+    {
+      "id": "unipile-account-id",
+      "name": "Work Email",
+      "type": "GOOGLE_OAUTH"
+    }
+  ]
+}
+```
+
+**curl:**
+
+```bash
+# List configs
+curl -s -H "Cookie: <cognito-session-cookies>" \
+  https://api.leadgenius.app/api/lead-notifications/config | jq
+
+# List Unipile accounts
+curl -s -H "Cookie: <cognito-session-cookies>" \
+  "https://api.leadgenius.app/api/lead-notifications/config?accounts=true" | jq
+```
+
+---
+
+### `POST /api/lead-notifications/config`
+
+Create a new notification config. Validates the Unipile account ID via `UnipileClient.getAccount`.
+
+**Request Body:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | Yes | — | Human-readable rule name |
+| `eventTypes` | array | Yes | — | Array of event type strings (see Event Types above) |
+| `unipileAccountId` | string | Yes | — | Unipile account ID for dispatch |
+| `channelType` | string | Yes | — | Channel type (see Channel Routing above) |
+| `messageTemplate` | string | Yes | — | Message template with `{{placeholder}}` tokens (max 2000 chars) |
+| `enabled` | boolean | No | `true` | Whether the config is active |
+| `recipientEmail` | string | No | — | Override recipient email (for email channels) |
+| `recipientChatId` | string | No | — | Override chat ID (for message channels) |
+
+**Template Placeholders:**
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{{lead_name}}` | First lead name, or "Name and N others" for batches |
+| `{{lead_email}}` | First lead email |
+| `{{lead_company}}` | First lead company name |
+| `{{lead_title}}` | First lead job title |
+| `{{client_id}}` | Client ID |
+| `{{event_type}}` | Human-readable event type |
+| `{{previous_value}}` | Previous field value (for change events) or "N/A" |
+| `{{new_value}}` | New field value (for change events) |
+| `{{timestamp}}` | ISO timestamp |
+| `{{lead_count}}` | Number of leads in batch |
+
+**Response (201):**
+
+```json
+{
+  "config": {
+    "id": "new-config-uuid",
+    "company_id": "company-uuid",
+    "owner": "user-sub",
+    "name": "New Lead Alert",
+    "enabled": true,
+    "eventTypes": "[\"new_source_lead\"]",
+    "unipileAccountId": "unipile-account-id",
+    "channelType": "MAIL",
+    "messageTemplate": "New lead: {{lead_name}} at {{lead_company}}",
+    "createdAt": "2026-03-24T10:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Condition |
+|--------|-----------|
+| 400 | Missing required fields (`name`, `eventTypes`, `unipileAccountId`, `channelType`, `messageTemplate`) |
+| 400 | `messageTemplate` exceeds 2000 characters |
+| 400 | Invalid Unipile account ID (account not found) |
+| 401 | Authentication required |
+| 403 | No company found for user |
+
+**curl:**
+
+```bash
+curl -s -X POST \
+  -H "Cookie: <cognito-session-cookies>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Lead Alert",
+    "eventTypes": ["new_source_lead", "new_enrich_lead"],
+    "unipileAccountId": "UNIPILE_ACCOUNT_ID",
+    "channelType": "MAIL",
+    "messageTemplate": "New lead: {{lead_name}} at {{lead_company}} ({{lead_email}})",
+    "recipientEmail": "alerts@company.com"
+  }' \
+  https://api.leadgenius.app/api/lead-notifications/config | jq
+```
+
+---
+
+### `PUT /api/lead-notifications/config`
+
+Update an existing notification config. Validates ownership (config's `company_id` must match caller's company). If `unipileAccountId` is changed, validates the new account.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Config ID to update |
+| `name` | string | No | Updated rule name |
+| `enabled` | boolean | No | Enable/disable toggle |
+| `eventTypes` | array | No | Updated event types |
+| `unipileAccountId` | string | No | Updated Unipile account ID |
+| `channelType` | string | No | Updated channel type |
+| `messageTemplate` | string | No | Updated message template |
+| `recipientEmail` | string | No | Updated recipient email |
+| `recipientChatId` | string | No | Updated chat ID |
+
+**Response (200):**
+
+```json
+{
+  "config": { /* updated config object */ }
+}
+```
+
+**Error Responses:**
+
+| Status | Condition |
+|--------|-----------|
+| 400 | Missing `id` field |
+| 400 | Invalid new Unipile account ID |
+| 401 | Authentication required |
+| 403 | Config belongs to another company |
+| 404 | Config not found |
+
+**curl:**
+
+```bash
+curl -s -X PUT \
+  -H "Cookie: <cognito-session-cookies>" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"CONFIG_ID","enabled":false}' \
+  https://api.leadgenius.app/api/lead-notifications/config | jq
+```
+
+---
+
+### `DELETE /api/lead-notifications/config`
+
+Delete a notification config. Validates ownership before deletion.
+
+**Parameters:** `id` via query parameter or request body.
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "id": "deleted-config-uuid"
+}
+```
+
+**Error Responses:**
+
+| Status | Condition |
+|--------|-----------|
+| 400 | Missing `id` |
+| 401 | Authentication required |
+| 403 | Config belongs to another company |
+| 404 | Config not found |
+
+**curl:**
+
+```bash
+curl -s -X DELETE \
+  -H "Cookie: <cognito-session-cookies>" \
+  "https://api.leadgenius.app/api/lead-notifications/config?id=CONFIG_ID" | jq
+```
+
+---
+
+### `GET /api/lead-notifications/logs`
+
+List recent `LeadNotificationLog` entries for the authenticated user's company, sorted by `createdAt` descending.
+
+**Query Parameters:** None (scoped by authenticated user's company).
+
+**Response (200):**
+
+```json
+{
+  "logs": [
+    {
+      "id": "log-uuid",
+      "configId": "config-uuid",
+      "company_id": "company-uuid",
+      "owner": "user-sub",
+      "eventType": "new_source_lead",
+      "leadIds": "[\"lead-1\",\"lead-2\"]",
+      "channelType": "MAIL",
+      "status": "sent",
+      "unipileMessageId": "msg-uuid",
+      "errorMessage": null,
+      "leadCount": 2,
+      "renderedMessage": "New lead: Jane Doe and 1 others at Acme Corp",
+      "createdAt": "2026-03-01T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Log status values:** `sent`, `failed`, `duplicate_skipped`, `batched`
+
+**curl:**
+
+```bash
+curl -s -H "Cookie: <cognito-session-cookies>" \
+  https://api.leadgenius.app/api/lead-notifications/logs | jq
+```
+
+---
+
+### DynamoDB Models
+
+**LeadNotificationConfig** — Per-company notification rules
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Primary key (UUID) |
+| `company_id` | string | Company ID (required) |
+| `owner` | string | User who created (required) |
+| `name` | string | Human-readable rule name |
+| `enabled` | boolean | Whether active (default: true) |
+| `eventTypes` | string | JSON array of event type strings |
+| `unipileAccountId` | string | Unipile account for dispatch |
+| `channelType` | string | Channel type for routing |
+| `messageTemplate` | string | Template with `{{placeholder}}` tokens |
+| `recipientEmail` | string | Override recipient (email channels) |
+| `recipientChatId` | string | Override chat ID (message channels) |
+| `lastTriggeredAt` | datetime | Last notification dispatch time |
+
+GSIs: `company_id+createdAt` → `leadnotifconfig-company_id-createdAt-index`, `owner+createdAt` → `leadnotifconfig-owner-createdAt-index`
+
+**LeadNotificationLog** — Dispatch audit trail
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Primary key (UUID) |
+| `configId` | string | Reference to config ID |
+| `company_id` | string | Company ID |
+| `owner` | string | User who owns this record |
+| `eventType` | string | Event that triggered notification |
+| `leadIds` | string | JSON array of lead IDs |
+| `channelType` | string | Channel used for dispatch |
+| `status` | string | `sent`, `failed`, `duplicate_skipped`, `batched` |
+| `unipileMessageId` | string | Unipile response message ID (on success) |
+| `errorMessage` | string | Error details (on failure) |
+| `leadCount` | integer | Number of leads in notification |
+| `renderedMessage` | string | Final rendered message (for audit) |
+
+GSIs: `company_id+createdAt` → `leadnotiflog-company_id-createdAt-index`, `configId+createdAt` → `leadnotiflog-configId-createdAt-index`
+
+---
+
+
 ## Error Codes
 
 All Automation API errors return a consistent JSON envelope with `success: false`, a human-readable `error` message, an optional `details` field, and a machine-readable `code`. Use the `code` field for programmatic error handling.
@@ -5016,3 +5611,336 @@ Cookie-based route for frontend `CreditService.purchaseCredits()`. Does NOT use 
 | `src/app/api/automation/epsimo/credits/purchase/route.ts` | Credit purchase (automation) endpoint |
 | `src/app/api/automation/epsimo/threads/route.ts` | Thread usage endpoint |
 | `src/app/api/credits/purchase/route.ts` | Credit purchase (UI/cookie) endpoint |
+
+
+---
+
+## Account-Based Lead Analysis
+
+Company-level analytics derived from existing EnrichLead records. Groups leads by company (case-insensitive `companyName`, merged by `companyDomain`), computes aggregate metrics, and supports CSV/JSON export. All endpoints use `withAutomationAuth` middleware.
+
+### `GET /api/automation/account-analysis/companies`
+
+List company groups with sorting and filtering.
+
+**Query Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `client_id` | string | Yes | — | Client to analyze |
+| `sort_by` | string | No | `count` | Sort field: `count`, `avg_score`, `total_score` |
+| `order` | string | No | `desc` | Sort direction: `asc`, `desc` |
+| `limit` | integer | No | all | Return top N companies |
+| `min_leads` | integer | No | — | Exclude companies with fewer leads |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "companies": [
+      {
+        "companyName": "acme corp",
+        "companyDomain": "acme.com",
+        "leadCount": 15,
+        "avgScore": 72.50,
+        "totalScore": 1087
+      }
+    ],
+    "totalCompanies": 25,
+    "totalLeads": 350
+  },
+  "requestId": "req-abc123"
+}
+```
+
+**Error Responses:**
+
+| Status | Error | Condition |
+|--------|-------|-----------|
+| 400 | `client_id is required` | Missing `client_id` query param |
+| 401 | `Authentication failed - verify your API key is valid` | Invalid or missing API key |
+| 429 | `Rate limit exceeded` | Too many requests (includes `Retry-After` header) |
+| 502 | `Upstream API error` | Internal leads API returned 5xx |
+| 504 | `Request timed out while fetching lead data` | 30-second timeout exceeded |
+
+**curl:**
+
+```bash
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/account-analysis/companies?client_id=YOUR_CLIENT&sort_by=avg_score&order=desc&min_leads=3" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis list --client YOUR_CLIENT --sort avg_score --order desc --min-leads 3
+```
+
+---
+
+### `GET /api/automation/account-analysis/companies/{companyName}`
+
+Detailed metrics for a single company. The `companyName` path segment is URL-decoded and matched case-insensitively against grouped company names.
+
+**Path Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `companyName` | string | Yes | URL-encoded company name |
+
+**Query Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `client_id` | string | Yes | — | Client to analyze |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "companyName": "acme corp",
+    "companyDomain": "acme.com",
+    "leadCount": 15,
+    "scoreStats": {
+      "average": 72.50,
+      "median": 75.00,
+      "max": 95,
+      "min": 30
+    },
+    "statusDistribution": {
+      "New": 33.3,
+      "Contacted": 26.7,
+      "Qualified": 20.0,
+      "Unqualified": 13.3,
+      "Disqualified": 6.7
+    },
+    "engagementVelocity": 8,
+    "championLead": {
+      "id": "lead-001",
+      "fullName": "Jane Doe",
+      "email": "jane@acme.com",
+      "title": "VP Sales",
+      "aiScoreValue": 95
+    }
+  },
+  "requestId": "req-abc123"
+}
+```
+
+**Score Stats fields:**
+- `average`: Arithmetic mean of valid scores, rounded to 2 decimal places (null if no valid scores)
+- `median`: Middle value of sorted valid scores (null if no valid scores)
+- `max` / `min`: Highest / lowest valid score (null if no valid scores)
+
+**Status Distribution:** Percentage per status category, 1 decimal place, sums to exactly 100.0. Leads with null/empty status are categorized as "Unknown".
+
+**Engagement Velocity:** Count of leads with `createdAt` or `updatedAt` within the last 30 days.
+
+**Champion Lead:** Highest-scored lead in the group. Tiebreak by most recent `updatedAt`. Null if no leads have valid scores.
+
+**Error Responses:**
+
+| Status | Error | Condition |
+|--------|-------|-----------|
+| 400 | `client_id is required` | Missing `client_id` query param |
+| 404 | `Company not found` | No matching company group |
+| 401 | `Authentication failed` | Invalid API key |
+| 429 | `Rate limit exceeded` | Rate limited (includes `Retry-After` header) |
+
+**curl:**
+
+```bash
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/account-analysis/companies/Acme%20Corp?client_id=YOUR_CLIENT" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis analyze --client YOUR_CLIENT --company "Acme Corp"
+```
+
+---
+
+### `GET /api/automation/account-analysis/analyze`
+
+Bulk analysis across all companies (or a single company). Returns full `CompanyMetrics` for each company plus a summary object.
+
+**Query Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `client_id` | string | Yes | — | Client to analyze |
+| `company` | string | No | — | Specific company name (case-insensitive) |
+| `limit` | integer | No | all | Return top N companies |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "companies": [
+      {
+        "companyName": "acme corp",
+        "companyDomain": "acme.com",
+        "leadCount": 15,
+        "scoreStats": {
+          "average": 72.50,
+          "median": 75.00,
+          "max": 95,
+          "min": 30
+        },
+        "statusDistribution": {
+          "New": 33.3,
+          "Contacted": 26.7,
+          "Qualified": 20.0,
+          "Unqualified": 13.3,
+          "Disqualified": 6.7
+        },
+        "engagementVelocity": 8,
+        "championLead": {
+          "id": "lead-001",
+          "fullName": "Jane Doe",
+          "email": "jane@acme.com",
+          "title": "VP Sales",
+          "aiScoreValue": 95
+        }
+      }
+    ],
+    "summary": {
+      "totalCompanies": 25,
+      "totalLeads": 350,
+      "overallAvgScore": 65.30,
+      "topCompany": "acme corp"
+    }
+  },
+  "requestId": "req-abc123"
+}
+```
+
+**Summary fields:**
+- `totalCompanies`: Number of company groups
+- `totalLeads`: Sum of all lead counts across all companies
+- `overallAvgScore`: Weighted average of all valid lead scores
+- `topCompany`: Company name with the highest average score
+
+Companies are sorted by lead count descending. The `limit` parameter truncates after sorting.
+
+**Error Responses:**
+
+| Status | Error | Condition |
+|--------|-------|-----------|
+| 400 | `client_id is required` | Missing `client_id` query param |
+| 404 | `Company not found` | `company` param specified but no match |
+| 401 | `Authentication failed` | Invalid API key |
+| 429 | `Rate limit exceeded` | Rate limited |
+
+**curl:**
+
+```bash
+# All companies
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/account-analysis/analyze?client_id=YOUR_CLIENT&limit=10" | jq
+
+# Single company
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/account-analysis/analyze?client_id=YOUR_CLIENT&company=Acme%20Corp" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis analyze --client YOUR_CLIENT --limit 10
+npx tsx src/scripts/lgp.ts account-analysis analyze --client YOUR_CLIENT --company "Acme Corp"
+```
+
+---
+
+### `GET /api/automation/account-analysis/export`
+
+Export analysis results as CSV or JSON.
+
+**Query Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `client_id` | string | Yes | — | Client to analyze |
+| `format` | string | Yes | — | Export format: `csv` or `json` |
+
+**CSV Response:**
+
+Content-Type: `text/csv`
+Content-Disposition: `attachment; filename="company_analysis.csv"`
+
+CSV columns (14 total):
+
+| Column | Source |
+|--------|--------|
+| Company Name | `companyName` |
+| Domain | `companyDomain` |
+| Lead Count | `leadCount` |
+| Avg Score | `scoreStats.average` |
+| Median Score | `scoreStats.median` |
+| Max Score | `scoreStats.max` |
+| Min Score | `scoreStats.min` |
+| Pct New | `statusDistribution["New"]` |
+| Pct Contacted | `statusDistribution["Contacted"]` |
+| Pct Qualified | `statusDistribution["Qualified"]` |
+| Velocity | `engagementVelocity` |
+| Champion Name | `championLead.fullName` |
+| Champion Email | `championLead.email` |
+| Champion Score | `championLead.aiScoreValue` |
+
+**JSON Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "companyName": "acme corp",
+      "companyDomain": "acme.com",
+      "leadCount": 15,
+      "scoreStats": { "average": 72.50, "median": 75.00, "max": 95, "min": 30 },
+      "statusDistribution": { "New": 33.3, "Contacted": 26.7, "Qualified": 20.0 },
+      "engagementVelocity": 8,
+      "championLead": { "id": "lead-001", "fullName": "Jane Doe", "email": "jane@acme.com", "title": "VP Sales", "aiScoreValue": 95 }
+    }
+  ],
+  "requestId": "req-abc123"
+}
+```
+
+**Error Responses:**
+
+| Status | Error | Condition |
+|--------|-------|-----------|
+| 400 | `client_id is required` | Missing `client_id` query param |
+| 400 | `format is required and must be "csv" or "json"` | Missing or invalid `format` param |
+| 401 | `Authentication failed` | Invalid API key |
+| 429 | `Rate limit exceeded` | Rate limited |
+
+**curl:**
+
+```bash
+# CSV export
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/account-analysis/export?client_id=YOUR_CLIENT&format=csv" \
+  -o company_analysis.csv
+
+# JSON export
+curl -s -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/account-analysis/export?client_id=YOUR_CLIENT&format=json" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis export --client YOUR_CLIENT --format csv --output ./company_analysis.csv
+npx tsx src/scripts/lgp.ts account-analysis export --client YOUR_CLIENT --format json
+```

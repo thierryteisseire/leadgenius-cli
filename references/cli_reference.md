@@ -2033,14 +2033,13 @@ lgp generate schedule delete <scheduleId>
 npx tsx src/scripts/lgp.ts generate schedule delete sched-uuid
 ```
 
-
 ---
 
-## admin backup
+## admin
 
-Manage DynamoDB backups: discover tables, create/list/describe/delete on-demand backups, restore tables, and manage Point-in-Time Recovery (PITR). All admin backup commands require the `LGP_ADMIN_KEY` environment variable to be set. The CLI sends `X-Admin-Key` header on every admin request for authentication.
+Manage platform administration: companies, members, users, views, clients, and organisation trees. All admin commands require the `LGP_ADMIN_KEY` environment variable to be set. The CLI sends `X-Admin-Key` header on every admin request for authentication.
 
-> **Note:** The admin CLI uses Python (`lgp.py`) and communicates with `/api/admin/backups/*` endpoints. All commands support the `--json` flag for raw JSON output.
+> **Note:** The admin CLI uses Python (`lgp.py`) and communicates with `/api/admin/*` endpoints. All commands support the `--json` flag for raw JSON output.
 
 ### Environment Variables
 
@@ -2049,6 +2048,399 @@ Manage DynamoDB backups: discover tables, create/list/describe/delete on-demand 
 | `LGP_ADMIN_KEY` | Admin secret key for `X-Admin-Key` header | Yes (for all admin commands) |
 
 If `LGP_ADMIN_KEY` is not set, the CLI exits with an error message instructing the user to set the variable.
+
+---
+
+### `admin companies list`
+
+List all companies with owner details, member counts, and client counts.
+
+**Syntax:**
+
+```bash
+lgp admin companies list [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Table columns:** `ID`, `Name`, `Owner Email`, `Members`, `Clients`, `Created`
+
+**Example:**
+
+```bash
+lgp admin companies list
+```
+
+**Expected output (table):**
+
+```
+ID                                    Name           Owner Email          Members  Clients  Created
+------------------------------------  -------------  -------------------  -------  -------  ----------
+company-abc123                        Acme Corp      owner@acme.com       5        3        2026-01-15
+company-def456                        Beta Inc       admin@beta.io        2        1        2026-02-01
+```
+
+---
+
+### `admin companies show`
+
+Show detailed information for a specific company including members and data counts.
+
+**Syntax:**
+
+```bash
+lgp admin companies show --id <companyId> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--id <companyId>` | string | Yes | — | Company ID to show details for |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Example:**
+
+```bash
+lgp admin companies show --id company-abc123
+```
+
+---
+
+### `admin companies members list`
+
+List all members of a specific company.
+
+**Syntax:**
+
+```bash
+lgp admin companies members list --company <id> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--company <id>` | string | Yes | — | Company ID to list members for |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Example:**
+
+```bash
+lgp admin companies members list --company company-abc123
+```
+
+---
+
+### `admin companies members add`
+
+Add a new member to a company.
+
+**Syntax:**
+
+```bash
+lgp admin companies members add --company <id> --email <email> --role <role> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--company <id>` | string | Yes | — | Company ID to add the member to |
+| `--email <email>` | string | Yes | — | Email address of the user to add |
+| `--role <role>` | string | Yes | — | Role: `owner`, `admin`, `member`, `viewer` |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted output |
+
+**Example:**
+
+```bash
+lgp admin companies members add --company company-abc123 --email newuser@acme.com --role member
+```
+
+---
+
+### `admin companies members update`
+
+Update a company member's role, client access, and organisation rights.
+
+**Syntax:**
+
+```bash
+lgp admin companies members update --company <id> --user <userId> [options] [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--company <id>` | string | Yes | — | Company ID |
+| `--user <userId>` | string | Yes | — | User ID of the member to update |
+| `--role <role>` | string | No | — | New role: `owner`, `admin`, `member`, `viewer` |
+| `--access-mode <mode>` | string | No | — | Client access mode: `all`, `own`, `specific` |
+| `--client-ids <ids>` | string | No | — | Comma-separated client IDs (required when access-mode is `specific`) |
+| `--group <group>` | string | No | — | Organisation group: `admin`, `manager`, `user`, `viewer` |
+| `--menu-access <json>` | string | No | — | JSON array of menu keys (e.g., `'["dashboard","leads"]'`) |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted output |
+
+**Example:**
+
+```bash
+lgp admin companies members update --company company-abc123 --user usr-456 \
+  --role admin --access-mode specific --client-ids "client-1,client-2" --group manager
+```
+
+---
+
+### `admin companies members remove`
+
+Remove a member from a company. Cannot remove the company owner.
+
+**Syntax:**
+
+```bash
+lgp admin companies members remove --company <id> --user <userId> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--company <id>` | string | Yes | — | Company ID |
+| `--user <userId>` | string | Yes | — | User ID of the member to remove |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted output |
+
+**Example:**
+
+```bash
+lgp admin companies members remove --company company-abc123 --user usr-456
+```
+
+---
+
+### `admin companies clients list`
+
+List all clients belonging to a specific company.
+
+**Syntax:**
+
+```bash
+lgp admin companies clients list --company <id> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--company <id>` | string | Yes | — | Company ID to list clients for |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Example:**
+
+```bash
+lgp admin companies clients list --company company-abc123
+```
+
+---
+
+### `admin companies org-tree`
+
+Display the organisation tree for a company showing members, roles, client access, and views.
+
+**Syntax:**
+
+```bash
+lgp admin companies org-tree --company <id> [--detailed] [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--company <id>` | string | Yes | — | Company ID to display org tree for |
+| `--detailed` | boolean | No | `false` | Show full view lists, client names, menuAccess, and permissions for each member |
+| `--json` | boolean | No | `false` | Output raw JSON from the org-tree API instead of ASCII tree |
+
+**Example (default):**
+
+```bash
+lgp admin companies org-tree --company company-abc123
+```
+
+**Expected output (default):**
+
+```
+Acme Corp
+├── owner@acme.com [owner, admin]
+│   ├── Client Access: all
+│   └── Views: 6 views
+├── user1@acme.com [member, user]
+│   ├── Client Access: specific (2 clients)
+│   └── Views: 3 views
+└── user2@acme.com [viewer, viewer]
+    ├── Client Access: all
+    └── Views: 1 view
+```
+
+**Example (detailed):**
+
+```bash
+lgp admin companies org-tree --company company-abc123 --detailed
+```
+
+**Expected output (detailed):**
+
+```
+Acme Corp
+├── owner@acme.com [owner, admin]
+│   ├── Client Access: all
+│   ├── Views: full, prod2, focus, marketing, sales, analyst
+│   ├── Menu Access: (none)
+│   └── Permissions: (none)
+├── user1@acme.com [member, user]
+│   ├── Client Access: specific
+│   │   ├── Q1 Campaign (client-abc)
+│   │   └── Q2 Outbound (client-def)
+│   ├── Views: prod2, focus
+│   ├── Menu Access: dashboard, leads
+│   └── Permissions: canExport=true, canDelete=false
+└── user2@acme.com [viewer, viewer]
+    ├── Client Access: all
+    ├── Views: prod2
+    ├── Menu Access: (none)
+    └── Permissions: (none)
+```
+
+---
+
+### `admin users list`
+
+List all Cognito users with roles and view assignments. Supports search filtering.
+
+**Syntax:**
+
+```bash
+lgp admin users list [--search <term>] [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--search <term>` | string | No | — | Filter users by email substring (case-insensitive) |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Table columns:** `Username`, `Email`, `Role`, `Views`, `Status`, `Master Admin`
+
+**Example:**
+
+```bash
+lgp admin users list --search acme
+```
+
+---
+
+### `admin users set-role`
+
+Set a user's role in Cognito.
+
+**Syntax:**
+
+```bash
+lgp admin users set-role --username <username> --role <role> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--username <username>` | string | Yes | — | Cognito username |
+| `--role <role>` | string | Yes | — | Role ID: `admin`, `companyAdmin`, `marketing`, `sales`, `analyst`, `viewer`, `custom` |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted output |
+
+**Example:**
+
+```bash
+lgp admin users set-role --username user-abc123 --role marketing
+```
+
+---
+
+### `admin users set-views`
+
+Set a user's allowed views in Cognito.
+
+**Syntax:**
+
+```bash
+lgp admin users set-views --username <username> --views <views> [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--username <username>` | string | Yes | — | Cognito username |
+| `--views <views>` | string | Yes | — | Comma-separated view IDs (e.g., `full,prod2,focus`) |
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted output |
+
+**Example:**
+
+```bash
+lgp admin users set-views --username user-abc123 --views full,prod2,focus
+```
+
+---
+
+### `admin views list`
+
+List all available view configurations and role definitions.
+
+**Syntax:**
+
+```bash
+lgp admin views list [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted tables |
+
+**Example:**
+
+```bash
+lgp admin views list
+```
+
+---
+
+### `admin clients list`
+
+List all clients across all companies with company name resolution.
+
+**Syntax:**
+
+```bash
+lgp admin clients list [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--json` | boolean | No | `false` | Output raw JSON instead of formatted table |
+
+**Example:**
+
+```bash
+lgp admin clients list
+```
+
 
 ---
 
@@ -2428,3 +2820,155 @@ lgp admin backup pitr-disable --table Company-abc123def
   "message": "PITR disabled successfully"
 }
 ```
+
+
+---
+
+## account-analysis
+
+Company-level lead analytics: group leads by company, compute aggregate metrics, and export results. All subcommands default to `--format table` (unlike the global `json` default).
+
+### `account-analysis list`
+
+List company groups with sorting and filtering.
+
+**Syntax:**
+
+```bash
+lgp account-analysis list --client <ID> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client <ID>` | string | Yes | — | Client ID to analyze |
+| `--sort <field>` | string | No | `count` | Sort field: `count`, `avg_score`, `total_score` |
+| `--order <dir>` | string | No | `desc` | Sort direction: `asc`, `desc` |
+| `--limit <n>` | integer | No | all | Return top N companies |
+| `--min-leads <n>` | integer | No | — | Exclude companies with fewer leads |
+| `--format <fmt>` | string | No | `table` | Output format: `json` or `table` |
+| `--no-cache` | boolean | No | `false` | Bypass local cache |
+| `--refresh` | boolean | No | `false` | Invalidate cache and fetch fresh data |
+
+**Table columns:** Company Name, Domain, Lead Count, Avg Score, Total Score
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis list \
+  --client cl_9f3a2b7e \
+  --sort avg_score \
+  --order desc \
+  --min-leads 3
+```
+
+---
+
+### `account-analysis analyze`
+
+Detailed metrics for all companies or a single company.
+
+**Syntax:**
+
+```bash
+lgp account-analysis analyze --client <ID> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client <ID>` | string | Yes | — | Client ID to analyze |
+| `--company <name>` | string | No | — | Specific company name (case-insensitive) |
+| `--limit <n>` | integer | No | all | Return top N companies |
+| `--format <fmt>` | string | No | `table` | Output format: `json` or `table` |
+| `--no-cache` | boolean | No | `false` | Bypass local cache |
+| `--refresh` | boolean | No | `false` | Invalidate cache and fetch fresh data |
+
+**Without `--company`:** Table with columns: Company, Leads, Avg Score, Median, Max, Min, Velocity, Champion
+
+**With `--company`:** Detailed key-value format with score stats, status distribution percentages, engagement velocity, and champion lead details.
+
+**Example — all companies:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis analyze --client cl_9f3a2b7e
+```
+
+**Example — single company:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis analyze \
+  --client cl_9f3a2b7e \
+  --company "Acme Corp"
+```
+
+---
+
+### `account-analysis export`
+
+Export analysis results to CSV or JSON file (or stdout).
+
+**Syntax:**
+
+```bash
+lgp account-analysis export --client <ID> --format <csv|json> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client <ID>` | string | Yes | — | Client ID to analyze |
+| `--format <fmt>` | string | Yes | — | Export format: `csv` or `json` |
+| `--output <path>` | string | No | stdout | File path to write output to |
+| `--no-cache` | boolean | No | `false` | Bypass local cache |
+| `--refresh` | boolean | No | `false` | Invalidate cache and fetch fresh data |
+
+**Example — export CSV to file:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis export \
+  --client cl_9f3a2b7e \
+  --format csv \
+  --output ./company-analysis.csv
+```
+
+**Example — export JSON to stdout:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis export \
+  --client cl_9f3a2b7e \
+  --format json
+```
+
+---
+
+### `account-analysis cache-clear`
+
+Clear the local ABLA cache for a specific client or all clients.
+
+**Syntax:**
+
+```bash
+lgp account-analysis cache-clear [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client <ID>` | string | No | — | Clear cache for a specific client (omit to clear all) |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts account-analysis cache-clear --client cl_9f3a2b7e
+```
+
+**Cache details:**
+- Location: `~/.leadgenius/abla-cache.json`
+- TTL: 15 minutes
+- Use `--no-cache` on any subcommand to bypass cache for a single request
+- Use `--refresh` to invalidate and re-fetch
