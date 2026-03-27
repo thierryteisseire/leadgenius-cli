@@ -1756,6 +1756,247 @@ npx tsx src/scripts/lgp.ts epsimo threads --token eyJ... --format table
 
 ---
 
+## clients
+
+Manage clients (data partitions) for your company.
+
+### `clients list`
+
+List all clients belonging to your company.
+
+**Syntax:**
+
+```bash
+lgp clients list
+```
+
+**Example:**
+
+```bash
+python lgp.py clients list
+```
+
+**Expected output:**
+
+```
+ID                                       Client ID                       Name
+---------------------------------------  ------------------------------  --------------------
+rec-uuid-1                               client-acme-q1                  Q1 Campaign
+rec-uuid-2                               client-acme-q2                  Q2 Outbound
+```
+
+---
+
+### `clients create`
+
+Create a new client partition.
+
+**Syntax:**
+
+```bash
+lgp clients create --name <name> [--url <url>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--name <name>` | string | Yes | — | Display name for the client |
+| `--url <url>` | string | No | — | Company website URL |
+
+**Example:**
+
+```bash
+python lgp.py clients create --name "Q3 Campaign" --url "https://acme.com"
+```
+
+**Expected output:**
+
+```
+Client created:
+  ID:        rec-uuid-3
+  Client ID: client-acme-q3
+```
+
+---
+
+## maintenance
+
+Report bugs and request enhancements via the `lgp` CLI. These go through the Automation API (`/api/agent/maintenance/*`) using your API key.
+
+> For standalone Node.js scripts that bypass the API, see the [Maintenance CLI (Standalone Node.js Scripts)](#maintenance-cli-standalone-nodejs-scripts) section in SKILL.md.
+
+### `maintenance bugs list`
+
+List all reported bugs.
+
+**Syntax:**
+
+```bash
+lgp maintenance bugs list
+```
+
+**Example:**
+
+```bash
+python lgp.py maintenance bugs list
+```
+
+---
+
+### `maintenance bugs report`
+
+Report a new bug.
+
+**Syntax:**
+
+```bash
+lgp maintenance bugs report --desc <description> [--email <email>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--desc <text>` | string | Yes | — | Description of the bug |
+| `--email <email>` | string | No | — | Contact email for follow-up |
+
+**Example:**
+
+```bash
+python lgp.py maintenance bugs report --desc "Login fails on mobile Safari" --email user@example.com
+```
+
+**Expected output:**
+
+```
+Bug reported: ID 0917ea6f-a1ae-437f-b085-d776309e0a69
+```
+
+---
+
+### `maintenance enhancements list`
+
+List all enhancement requests.
+
+**Syntax:**
+
+```bash
+lgp maintenance enhancements list
+```
+
+**Example:**
+
+```bash
+python lgp.py maintenance enhancements list
+```
+
+---
+
+### `maintenance enhancements request`
+
+Submit a new enhancement request.
+
+**Syntax:**
+
+```bash
+lgp maintenance enhancements request --desc <description> [--email <email>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--desc <text>` | string | Yes | — | Description of the enhancement |
+| `--email <email>` | string | No | — | Contact email for follow-up |
+
+**Example:**
+
+```bash
+python lgp.py maintenance enhancements request --desc "Add bulk CSV export for enriched leads"
+```
+
+**Expected output:**
+
+```
+Enhancement requested: ID fb3af1d4-21b3-4611-...
+```
+
+---
+
+## pipeline
+
+Show pipeline analytics for a date range.
+
+### `pipeline`
+
+**Syntax:**
+
+```bash
+lgp pipeline [--start <YYYY-MM-DD>] [--end <YYYY-MM-DD>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--start <date>` | string | No | 30 days ago | Start date (YYYY-MM-DD) |
+| `--end <date>` | string | No | today | End date (YYYY-MM-DD) |
+
+**Example:**
+
+```bash
+python lgp.py pipeline --start 2026-01-01 --end 2026-03-31
+```
+
+---
+
+## campaigns
+
+Manage campaigns.
+
+### `campaigns list`
+
+List all campaigns.
+
+**Syntax:**
+
+```bash
+lgp campaigns list
+```
+
+**Example:**
+
+```bash
+python lgp.py campaigns list
+```
+
+---
+
+### `campaigns create`
+
+Create a new campaign.
+
+**Syntax:**
+
+```bash
+lgp campaigns create --name <name>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--name <name>` | string | Yes | — | Campaign name |
+
+**Example:**
+
+```bash
+python lgp.py campaigns create --name "Q2 ABM Campaign"
+```
+
+---
+
 ## generate
 
 Trigger, monitor, and schedule multi-provider lead generation. Supports ICP-based runs (resolve provider config from an ICP record) and direct provider runs (specify provider and config inline).

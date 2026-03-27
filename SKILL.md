@@ -141,6 +141,10 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | `leads`            | [references/cli_reference.md#leads](references/cli_reference.md#leads) |
 | `tasks`            | [references/cli_reference.md#tasks](references/cli_reference.md#tasks) |
 | `generate`         | [references/cli_reference.md#generate](references/cli_reference.md#generate) |
+| `clients`          | [references/cli_reference.md#clients](references/cli_reference.md#clients) |
+| `maintenance`      | [references/cli_reference.md#maintenance](references/cli_reference.md#maintenance) |
+| `pipeline`         | [references/cli_reference.md#pipeline](references/cli_reference.md#pipeline) |
+| `campaigns`        | [references/cli_reference.md#campaigns](references/cli_reference.md#campaigns) |
 | `companies`        | [references/cli_reference.md#companies](references/cli_reference.md#companies) |
 | `webhooks`         | [references/cli_reference.md#webhooks](references/cli_reference.md#webhooks) |
 | `tables`           | [references/cli_reference.md#tables](references/cli_reference.md#tables) |
@@ -149,6 +153,7 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | `cognito`          | [references/cli_reference.md#cognito](references/cli_reference.md#cognito) |
 | `org`              | [references/cli_reference.md#org](references/cli_reference.md#org) |
 | `fsd`              | [references/cli_reference.md#fsd](references/cli_reference.md#fsd) |
+| `admin`            | [references/cli_reference.md#admin](references/cli_reference.md#admin) |
 
 ---
 
