@@ -210,3 +210,38 @@ There is also a REST API at `/api/maintenance` supporting full CRUD with JWT or 
 ## Documentation Site
 
 Docsify-based docs are served at `/docs` (e.g., `https://api.leadgenius.app/docs`). Source files in `/docs/`, copied to `public/docs-content/` at build time.
+
+---
+
+## API Behavioral Notes (2026-03-27)
+
+Important behavioral changes that affect CLI and API consumers:
+
+### Leads List Pagination (GET /api/automation/leads)
+
+- **Max page size capped at 50.** The `limit` parameter is clamped to 50 regardless of the value passed. Callers must paginate via `nextToken` to retrieve all leads.
+- **Orphaned leads mode:** Pass `client_id=__orphaned__` to find leads with null/empty `client_id` within your company. These leads are invisible to normal GSI queries.
+- **Cross-tenant validation:** The API now validates that the requested `client_id` belongs to your company before querying. Foreign `client_id` values return 403.
+
+### Lead Import Upsert (POST /api/automation/leads/import)
+
+- **Idempotent by email:** If a lead with the same `email` already exists in the **same** `client_id`, the import updates the existing record instead of creating a duplicate. This makes retries after ECONNRESET safe.
+- **Explicit ID upsert:** If the payload includes an `id` field that matches an existing lead, it updates instead of crashing with a DynamoDB conditional error.
+- **Empty strings → null:** Empty string values (`""`) are automatically converted to `null` before write to prevent DynamoDB GSI `ValidationException` errors.
+- **Response always includes `errors` and `warnings` arrays** (even when empty) for consistent CLI parsing.
+
+### Lead Transfer (POST /api/automation/leads/transfer)
+
+- **`skipSourceValidation: true`** — Allows transferring from an orphaned/deleted source client that no longer has a Client record.
+- **`fromClientId: "__orphaned__"`** — Transfers leads with null/empty `client_id` to a valid target client.
+
+### Generic Tables (POST /api/automation/tables/{tableName})
+
+- **Client table auto-generates `client_id`** if not provided in the body, matching the behavior of `POST /api/clients`.
+- **Tables without `client_id`** (Maintenance, Company, CompanyUser, etc.) no longer crash — the field is automatically stripped before the GraphQL mutation.
+- **Table-specific fields** are now included in list/create responses (e.g., `clientName` for Client, `name` for ICP, `type`/`description`/`status` for Maintenance).
+
+### Cross-Tenant Safety
+
+- **Single lead GET** (`GET /api/automation/leads/{id}`) flags cross-tenant `client_id` references with a `_clientWarning` field and prefixes the value with `__foreign:`.
+- All lead PUT/DELETE operations cascade across EnrichLeads, B2BLeads, and SourceLeads tables transparently.
