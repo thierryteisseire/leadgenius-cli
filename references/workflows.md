@@ -42,7 +42,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads dedup --client YOUR_CLIENT_ID --match email,linkedinUrl,fullName+companyName
+python lgp.py leads dedup --client YOUR_CLIENT_ID --match email,linkedinUrl,fullName+companyName
 ```
 
 **Expected response:** A list of `matches`, each containing `matchField`, `confidence`, `matchValue`, and `leadIds` (the group of duplicates). Also returns `totalLeadsScanned` and `totalDuplicateGroups`.
@@ -64,7 +64,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads get LEAD_ID
+python lgp.py leads get LEAD_ID
 ```
 
 Compare fields across leads in the group. Pick the lead with the most complete data as the "keep" lead.
@@ -88,7 +88,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads dedup-resolve --keep KEEP_LEAD_ID --merge DUPLICATE_1,DUPLICATE_2
+python lgp.py leads dedup-resolve --keep KEEP_LEAD_ID --merge DUPLICATE_1,DUPLICATE_2
 ```
 
 **Expected response:** Returns `mergedFields` (fields that were filled in), `conflicts` (fields where both keep and merge leads had values — keep lead's value wins), and `mergeLeadsMarked` count.
@@ -98,7 +98,7 @@ npx tsx src/scripts/lgp.ts leads dedup-resolve --keep KEEP_LEAD_ID --merge DUPLI
 Retrieve the keep lead to confirm merged fields are populated correctly.
 
 ```bash
-npx tsx src/scripts/lgp.ts leads get KEEP_LEAD_ID
+python lgp.py leads get KEEP_LEAD_ID
 ```
 
 ### Merge Rules
@@ -152,7 +152,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads transfer --from SOURCE_CLIENT_ID --to TARGET_CLIENT_ID --all --dry-run
+python lgp.py leads transfer --from SOURCE_CLIENT_ID --to TARGET_CLIENT_ID --all --dry-run
 ```
 
 **Expected response:** Returns `transferred` count, `skippedDuplicates` count, and `details` with per-lead breakdown including which duplicates were detected and by which match field.
@@ -201,7 +201,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 
 ```bash
 # Transfer all leads
-npx tsx src/scripts/lgp.ts leads transfer --from SOURCE_CLIENT_ID --to TARGET_CLIENT_ID --all
+python lgp.py leads transfer --from SOURCE_CLIENT_ID --to TARGET_CLIENT_ID --all
 
 # Transfer specific leads (use API with leadIds array)
 ```
@@ -211,13 +211,13 @@ npx tsx src/scripts/lgp.ts leads transfer --from SOURCE_CLIENT_ID --to TARGET_CL
 List leads in the target client to confirm they arrived.
 
 ```bash
-npx tsx src/scripts/lgp.ts leads list --client TARGET_CLIENT_ID --limit 10
+python lgp.py leads list --client TARGET_CLIENT_ID --limit 10
 ```
 
 Optionally, list the source client to confirm leads were moved out.
 
 ```bash
-npx tsx src/scripts/lgp.ts leads list --client SOURCE_CLIENT_ID --limit 10
+python lgp.py leads list --client SOURCE_CLIENT_ID --limit 10
 ```
 
 ### Transfer Rules
@@ -266,7 +266,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks list --platform woodpecker --limit 50
+python lgp.py webhooks list --platform woodpecker --limit 50
 ```
 
 Review the results. Each event includes `normalizedData` with contact information (email, name, LinkedIn URL) that will be used for matching.
@@ -291,7 +291,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks reprocess EVENT_ID
+python lgp.py webhooks reprocess EVENT_ID
 ```
 
 **Expected response:** Returns updated `matchStatus`, `matchedLeadId`, `matchConfidence`, and `matchMethod`. If a lead is matched, the webhook event is appended to the lead's `engagementHistory` and `engagementScore` is recalculated.
@@ -313,7 +313,7 @@ done
 
 ```bash
 for EVENT_ID in event-1 event-2 event-3; do
-  npx tsx src/scripts/lgp.ts webhooks reprocess $EVENT_ID
+  python lgp.py webhooks reprocess $EVENT_ID
 done
 ```
 
@@ -336,7 +336,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks list --limit 50
+python lgp.py webhooks list --limit 50
 ```
 
 **Step 5 — Clean up permanently unmatched events (optional)**
@@ -433,8 +433,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts companies list --client YOUR_CLIENT_ID
-npx tsx src/scripts/lgp.ts companies list --client YOUR_CLIENT_ID --sort totalLeads
+python lgp.py companies list --client YOUR_CLIENT_ID
+python lgp.py companies list --client YOUR_CLIENT_ID --sort totalLeads
 ```
 
 Available `sortBy` values: `totalLeads`, `qualifiedLeads`, `averageLeadScore`, `lastActivityDate`, `companyName`.
@@ -455,7 +455,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts companies get COMPANY_ID
+python lgp.py companies get COMPANY_ID
 ```
 
 To retrieve the full lead records associated with a company:
@@ -592,7 +592,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads activity LEAD_ID --type email_opened --notes "Opened Q1 campaign email"
+python lgp.py leads activity LEAD_ID --type email_opened --notes "Opened Q1 campaign email"
 ```
 
 **Expected response:** Returns `activitiesAdded`, `totalActivities`, updated `engagementScore`, and `lastEngagementAt`.
@@ -669,7 +669,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads get LEAD_ID
+python lgp.py leads get LEAD_ID
 ```
 
 Check that `engagementScore`, `lastEngagementAt`, and `engagementHistory` reflect the logged activities.
@@ -714,7 +714,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads validate-ownership
+python lgp.py leads validate-ownership
 ```
 
 **Expected response:**
@@ -762,7 +762,7 @@ Orphaned leads reference a `client_id` that no longer exists. To fix:
 1. List your available clients to find a valid target.
 
 ```bash
-npx tsx src/scripts/lgp.ts tables list Client
+python lgp.py tables list Client
 ```
 
 2. Transfer orphaned leads to a valid client using the transfer endpoint.
@@ -793,7 +793,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 Confirm that each client belongs to the correct company by listing clients and checking their `company_id`.
 
 ```bash
-npx tsx src/scripts/lgp.ts tables list Client
+python lgp.py tables list Client
 ```
 
 Cross-reference with your company ID. If a client has a mismatched `company_id`, leads assigned to it will show as `mismatchedCompany` issues.
@@ -812,7 +812,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads validate-ownership
+python lgp.py leads validate-ownership
 ```
 
 Confirm `status` is `"healthy"` and `totalIssues` is 0.
@@ -875,7 +875,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables create ICP --data '{
+python lgp.py tables create ICP --data '{
   "client_id": "YOUR_CLIENT_ID",
   "name": "Enterprise SaaS Decision Makers",
   "industries": ["Software", "SaaS"],
@@ -905,7 +905,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables get ICP ICP_ID
+python lgp.py tables get ICP ICP_ID
 ```
 
 Verify that `apifyActorId` is non-null. If missing, the pipeline run will fail with `ICP_NO_APIFY`.
@@ -956,7 +956,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 200
+python lgp.py fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 200
 ```
 
 Save the returned `pipelineId` as `PIPELINE_ID`.
@@ -975,7 +975,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_ID
+python lgp.py fsd status PIPELINE_ID
 ```
 
 Repeat until `stage` is `completed` or `failed`.
@@ -994,7 +994,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads list --client YOUR_CLIENT_ID --limit 20
+python lgp.py leads list --client YOUR_CLIENT_ID --limit 20
 ```
 
 Check that lead count matches `leadsGenerated` from the pipeline status and that enrichment/scoring fields are populated.
@@ -1076,7 +1076,7 @@ Save as `ICP_B_ID`.
 **CLI (for each):**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables create ICP --data '{"client_id":"YOUR_CLIENT_ID","name":"Enterprise SaaS","industries":["Software","SaaS"],"companySizes":["501-1000"],"apifyActorId":"apify/linkedin-sales-navigator","apifyInput":"{\"searchUrl\":\"...\"}","maxLeads":150}'
+python lgp.py tables create ICP --data '{"client_id":"YOUR_CLIENT_ID","name":"Enterprise SaaS","industries":["Software","SaaS"],"companySizes":["501-1000"],"apifyActorId":"apify/linkedin-sales-navigator","apifyInput":"{\"searchUrl\":\"...\"}","maxLeads":150}'
 ```
 
 **Step 2 — Create separate FSD campaigns per ICP**
@@ -1140,8 +1140,8 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT_ID --icp ICP_A_ID --target 150
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT_ID --icp ICP_B_ID --target 100
+python lgp.py fsd run --client YOUR_CLIENT_ID --icp ICP_A_ID --target 150
+python lgp.py fsd run --client YOUR_CLIENT_ID --icp ICP_B_ID --target 100
 ```
 
 Save both `pipelineId` values.
@@ -1151,8 +1151,8 @@ Save both `pipelineId` values.
 Track progress for each pipeline independently.
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_A_ID
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_B_ID
+python lgp.py fsd status PIPELINE_A_ID
+python lgp.py fsd status PIPELINE_B_ID
 ```
 
 **Step 5 — Compare results across ICPs**
@@ -1172,8 +1172,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd campaign CAMPAIGN_A_ID
-npx tsx src/scripts/lgp.ts fsd campaign CAMPAIGN_B_ID
+python lgp.py fsd campaign CAMPAIGN_A_ID
+python lgp.py fsd campaign CAMPAIGN_B_ID
 ```
 
 Compare `totalLeadsGenerated`, `totalLeadsEnriched`, `totalLeadsScored`, and `totalLeadsSent` across campaigns to determine which ICP performs better.
@@ -1192,7 +1192,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables update ICP ICP_B_ID --data '{"isActive": false}'
+python lgp.py tables update ICP ICP_B_ID --data '{"isActive": false}'
 ```
 
 ### Common Failure Points and Recovery
@@ -1242,13 +1242,13 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 100
+python lgp.py fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 100
 ```
 
 Save the `pipelineId` as `PIPELINE_V1_ID`. Wait for the pipeline to reach `completed`.
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_V1_ID
+python lgp.py fsd status PIPELINE_V1_ID
 ```
 
 **Step 2 — Review lead quality scores**
@@ -1265,7 +1265,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads list --client YOUR_CLIENT_ID --limit 50
+python lgp.py leads list --client YOUR_CLIENT_ID --limit 50
 ```
 
 Note the average `aiLeadScore`, the distribution of `aiQualification` values, and which leads scored lowest. Identify patterns — are low-scoring leads from the wrong industry, wrong seniority level, or wrong company size?
@@ -1302,7 +1302,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables update ICP ICP_ID --data '{
+python lgp.py tables update ICP ICP_ID --data '{
   "companySizes": ["201-500", "501-1000"],
   "seniority": ["VP", "C-Suite"],
   "apifyInput": "{\"searchUrl\":\"https://linkedin.com/sales/search/people?query=refined-search\"}"
@@ -1331,7 +1331,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 100
+python lgp.py fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 100
 ```
 
 Save the `pipelineId` as `PIPELINE_V2_ID`. Wait for completion.
@@ -1405,7 +1405,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables create UrlSettings --data '{
+python lgp.py tables create UrlSettings --data '{
   "client_id": "YOUR_CLIENT_ID",
   "companyUrl": "https://enrichment-service.example.com/company",
   "companyUrl_Apikey": "enrich-api-key-1",
@@ -1435,7 +1435,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables create AgentSettings --data '{
+python lgp.py tables create AgentSettings --data '{
   "client_id": "YOUR_CLIENT_ID",
   "projectId": "epsimo-project-id",
   "enrichment1AgentId": "agent-id-for-copyright-1"
@@ -1463,7 +1463,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables create SdrAiSettings --data '{
+python lgp.py tables create SdrAiSettings --data '{
   "client_id": "YOUR_CLIENT_ID",
   "projectId": "epsimo-sdr-project-id",
   "aiLeadScoreAgentId": "agent-id-for-lead-score",
@@ -1492,7 +1492,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables create EmailPlatformSettings --data '{
+python lgp.py tables create EmailPlatformSettings --data '{
   "client_id": "YOUR_CLIENT_ID",
   "platform": "woodpecker",
   "apiKey": "woodpecker-api-key",
@@ -1577,13 +1577,13 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 200
+python lgp.py fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 200
 ```
 
 Monitor until `stage` reaches `completed`:
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_ID
+python lgp.py fsd status PIPELINE_ID
 ```
 
 Verify the full pipeline completed all stages:
@@ -1636,7 +1636,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd campaigns
+python lgp.py fsd campaigns
 ```
 
 Review the output for:
@@ -1659,7 +1659,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd campaign CAMPAIGN_ID
+python lgp.py fsd campaign CAMPAIGN_ID
 ```
 
 Note the `lastRunAt` timestamp and any associated pipeline run ID.
@@ -1678,7 +1678,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_ID
+python lgp.py fsd status PIPELINE_ID
 ```
 
 Key indicators:
@@ -1728,13 +1728,13 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 200
+python lgp.py fsd run --client YOUR_CLIENT_ID --icp ICP_ID --target 200
 ```
 
 Monitor the new run to confirm it progresses past the previously failed stage.
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status NEW_PIPELINE_ID
+python lgp.py fsd status NEW_PIPELINE_ID
 ```
 
 **Step 6 — Deactivate a problematic campaign (optional)**
@@ -1751,7 +1751,7 @@ curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd deactivate-campaign CAMPAIGN_ID
+python lgp.py fsd deactivate-campaign CAMPAIGN_ID
 ```
 
 This sets `isActive: false` (soft delete). Reactivate later by updating the campaign:
@@ -1803,7 +1803,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads list --client YOUR_CLIENT_ID --limit 50
+python lgp.py leads list --client YOUR_CLIENT_ID --limit 50
 ```
 
 Note the range of `aiLeadScore` values. Leads with a score at or above the `qualificationThreshold` will be qualified for delivery.
@@ -1833,7 +1833,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd update-campaign CAMPAIGN_ID --data '{"qualificationThreshold": 55}'
+python lgp.py fsd update-campaign CAMPAIGN_ID --data '{"qualificationThreshold": 55}'
 ```
 
 **Step 3 — Verify email platform routing configuration**
@@ -1860,7 +1860,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 Also verify that EmailPlatformSettings exist for the platform:
 
 ```bash
-npx tsx src/scripts/lgp.ts tables list EmailPlatformSettings
+python lgp.py tables list EmailPlatformSettings
 ```
 
 **Step 4 — Check pipeline run delivery metrics**
@@ -1877,7 +1877,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_ID
+python lgp.py fsd status PIPELINE_ID
 ```
 
 Key metrics:
@@ -1900,7 +1900,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks list --limit 20
+python lgp.py webhooks list --limit 20
 ```
 
 Look for events with `eventType` like `email_sent`, `email_opened`, or `email_clicked` that correspond to the leads you sent.
@@ -1919,7 +1919,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks reprocess EVENT_ID
+python lgp.py webhooks reprocess EVENT_ID
 ```
 
 See [Workflow 3: Webhook Reprocessing](#3-webhook-reprocessing-workflow) for the full reprocessing procedure.

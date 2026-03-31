@@ -53,10 +53,10 @@ All API endpoints live under `/api/automation/`.
 
 ## Installation & Setup
 
-No separate installation required. The CLI runs via `npx tsx`:
+The CLI is a Python script requiring Python 3.8+ and the `requests` library (`pip install requests`):
 
 ```bash
-npx tsx src/scripts/lgp.ts <command> [options]
+python lgp.py <command> [options]
 ```
 
 ### Environment Variables
@@ -417,7 +417,7 @@ Note: `/users/info` uses `derivePlan(threadMax, stripeClientId)` (full), while `
 
 ## CLI Command Reference
 
-All commands use the syntax: `npx tsx src/scripts/lgp.ts <group> <command> [options]`
+All commands use the syntax: `python lgp.py <group> <command> [options]`
 
 ### auth
 
