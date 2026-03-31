@@ -34,7 +34,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-LGP_ADMIN_KEY=your_admin_key npx tsx src/scripts/lgp.ts leads list --client YOUR_CLIENT
+LGP_ADMIN_KEY=your_admin_key python lgp.py leads list --client YOUR_CLIENT
 ```
 
 **Response headers (with admin key):**
@@ -85,7 +85,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts auth test
+python lgp.py auth test
 ```
 
 ---
@@ -100,9 +100,9 @@ List EnrichLeads by `client_id`, sorted by `createdAt` descending. Supports fiel
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `client_id` | string | Yes | — | Client to list leads for |
+| `client_id` | string | Yes | — | Client to list leads for. Use `__orphaned__` to find leads with missing client_id. |
 | `fields` | string | No | default set | Comma-separated field names to return |
-| `limit` | integer | No | 50 | Max records (capped at 500) |
+| `limit` | integer | No | 50 | Max records per page (capped at 50). Use `nextToken` to paginate. |
 | `nextToken` | string | No | — | Pagination token from previous response |
 
 **Default fields returned:** `id`, `firstName`, `lastName`, `fullName`, `email`, `linkedinUrl`, `companyName`, `title`, `status`, `client_id`, `company_id`, `createdAt`, `updatedAt`.
@@ -152,7 +152,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads list --client YOUR_CLIENT_ID --limit 10
+python lgp.py leads list --client YOUR_CLIENT_ID --limit 10
 ```
 
 ---
@@ -204,7 +204,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads get LEAD_ID
+python lgp.py leads get LEAD_ID
 ```
 
 ---
@@ -266,10 +266,10 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 
 ```bash
 # Import from JSON file
-npx tsx src/scripts/lgp.ts leads import --file leads.json
+python lgp.py leads import --file leads.json
 
 # Import inline
-npx tsx src/scripts/lgp.ts leads import --data '{"client_id":"YOUR_CLIENT","firstName":"Jane","email":"jane@example.com"}'
+python lgp.py leads import --data '{"client_id":"YOUR_CLIENT","firstName":"Jane","email":"jane@example.com"}'
 ```
 
 ---
@@ -329,8 +329,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads search --email jane@example.com
-npx tsx src/scripts/lgp.ts leads search --first-name Jane --last-name Doe
+python lgp.py leads search --email jane@example.com
+python lgp.py leads search --first-name Jane --last-name Doe
 ```
 
 ---
@@ -388,7 +388,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads dedup --client YOUR_CLIENT --match email,linkedinUrl
+python lgp.py leads dedup --client YOUR_CLIENT --match email,linkedinUrl
 ```
 
 ---
@@ -444,7 +444,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads dedup-resolve --keep KEEP_ID --merge DUP_1,DUP_2
+python lgp.py leads dedup-resolve --keep KEEP_ID --merge DUP_1,DUP_2
 ```
 
 ---
@@ -500,7 +500,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads transfer --from SOURCE_CLIENT --to TARGET_CLIENT --all --dry-run
+python lgp.py leads transfer --from SOURCE_CLIENT --to TARGET_CLIENT --all --dry-run
 ```
 
 ---
@@ -547,7 +547,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads activities LEAD_ID
+python lgp.py leads activities LEAD_ID
 ```
 
 ---
@@ -623,7 +623,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads activity LEAD_ID --type email_opened --notes "Opened Q1 email"
+python lgp.py leads activity LEAD_ID --type email_opened --notes "Opened Q1 email"
 ```
 
 ---
@@ -666,7 +666,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts leads validate-ownership
+python lgp.py leads validate-ownership
 ```
 
 
@@ -732,8 +732,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tasks list
-npx tsx src/scripts/lgp.ts tasks list --status running --type enrichment
+python lgp.py tasks list
+python lgp.py tasks list --status running --type enrichment
 ```
 
 ---
@@ -779,7 +779,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tasks status JOB_ID
+python lgp.py tasks status JOB_ID
 ```
 
 ---
@@ -855,8 +855,8 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tasks enrich --lead LEAD_ID
-npx tsx src/scripts/lgp.ts tasks enrich --lead LEAD_ID --services companyUrl,emailFinder
+python lgp.py tasks enrich --lead LEAD_ID
+python lgp.py tasks enrich --lead LEAD_ID --services companyUrl,emailFinder
 ```
 
 ---
@@ -932,7 +932,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tasks copyright --lead LEAD_ID
+python lgp.py tasks copyright --lead LEAD_ID
 ```
 
 ---
@@ -1027,8 +1027,8 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tasks score --lead LEAD_ID
-npx tsx src/scripts/lgp.ts tasks score --lead LEAD_ID --fields aiLeadScore,aiQualification
+python lgp.py tasks score --lead LEAD_ID
+python lgp.py tasks score --lead LEAD_ID --fields aiLeadScore,aiQualification
 ```
 
 
@@ -1091,8 +1091,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts companies list --client YOUR_CLIENT
-npx tsx src/scripts/lgp.ts companies list --client YOUR_CLIENT --sort totalLeads
+python lgp.py companies list --client YOUR_CLIENT
+python lgp.py companies list --client YOUR_CLIENT --sort totalLeads
 ```
 
 ---
@@ -1145,7 +1145,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts companies get COMPANY_ID
+python lgp.py companies get COMPANY_ID
 ```
 
 ---
@@ -1217,7 +1217,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts companies leads COMPANY_ID --limit 50
+python lgp.py companies leads COMPANY_ID --limit 50
 ```
 
 ---
@@ -1271,7 +1271,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 No direct CLI command — use the API endpoint via curl. After aggregation completes, view results with:
 
 ```bash
-npx tsx src/scripts/lgp.ts companies list --client YOUR_CLIENT
+python lgp.py companies list --client YOUR_CLIENT
 ```
 
 ---
@@ -1538,7 +1538,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts companies content-analysis COMPANY_ID
+python lgp.py companies content-analysis COMPANY_ID
 ```
 
 
@@ -1606,8 +1606,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks list
-npx tsx src/scripts/lgp.ts webhooks list --platform woodpecker --limit 20
+python lgp.py webhooks list
+python lgp.py webhooks list --platform woodpecker --limit 20
 ```
 
 ---
@@ -1660,7 +1660,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks get EVENT_ID
+python lgp.py webhooks get EVENT_ID
 ```
 
 ---
@@ -1798,7 +1798,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts webhooks reprocess EVENT_ID
+python lgp.py webhooks reprocess EVENT_ID
 ```
 
 
@@ -1861,8 +1861,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts users list
-npx tsx src/scripts/lgp.ts users list --group admin
+python lgp.py users list
+python lgp.py users list --group admin
 ```
 
 ---
@@ -1908,7 +1908,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts users get USER_ID
+python lgp.py users get USER_ID
 ```
 
 ---
@@ -1959,7 +1959,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts users create --email newuser@example.com --role member --group user
+python lgp.py users create --email newuser@example.com --role member --group user
 ```
 
 ---
@@ -2013,7 +2013,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts users update USER_ID --role admin --group manager
+python lgp.py users update USER_ID --role admin --group manager
 ```
 
 ---
@@ -2050,7 +2050,7 @@ curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts users delete USER_ID
+python lgp.py users delete USER_ID
 ```
 
 ---
@@ -2134,8 +2134,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts cognito get --email user@example.com
-npx tsx src/scripts/lgp.ts cognito list --limit 10
+python lgp.py cognito get --email user@example.com
+python lgp.py cognito list --limit 10
 ```
 
 ---
@@ -2185,7 +2185,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts cognito create --email newuser@example.com --password "SecurePass123!"
+python lgp.py cognito create --email newuser@example.com --password "SecurePass123!"
 ```
 
 ---
@@ -2235,8 +2235,8 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts cognito enable --email user@example.com
-npx tsx src/scripts/lgp.ts cognito disable --email user@example.com
+python lgp.py cognito enable --email user@example.com
+python lgp.py cognito disable --email user@example.com
 ```
 
 ---
@@ -2335,7 +2335,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts users provision --email newuser@example.com --password "SecurePass123!" --company-name "Acme Corp"
+python lgp.py users provision --email newuser@example.com --password "SecurePass123!" --company-name "Acme Corp"
 ```
 
 
@@ -2382,7 +2382,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org list
+python lgp.py org list
 ```
 
 ---
@@ -2421,7 +2421,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org get COMPANY_ID
+python lgp.py org get COMPANY_ID
 ```
 
 ---
@@ -2462,7 +2462,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org create --name "Acme Corp"
+python lgp.py org create --name "Acme Corp"
 ```
 
 ---
@@ -2502,7 +2502,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org rename COMPANY_ID --name "New Name"
+python lgp.py org rename COMPANY_ID --name "New Name"
 ```
 
 ---
@@ -2539,7 +2539,7 @@ curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org delete COMPANY_ID
+python lgp.py org delete COMPANY_ID
 ```
 
 ---
@@ -2595,7 +2595,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org users COMPANY_ID
+python lgp.py org users COMPANY_ID
 ```
 
 ---
@@ -2647,7 +2647,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org add-user COMPANY_ID --email newuser@example.com --role member --group user
+python lgp.py org add-user COMPANY_ID --email newuser@example.com --role member --group user
 ```
 
 ---
@@ -2695,7 +2695,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org update-user COMPANY_USER_ID --role admin --group manager
+python lgp.py org update-user COMPANY_USER_ID --role admin --group manager
 ```
 
 ---
@@ -2735,7 +2735,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts org remove-user COMPANY_USER_ID
+python lgp.py org remove-user COMPANY_USER_ID
 ```
 
 
@@ -2826,9 +2826,9 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables list ICP
-npx tsx src/scripts/lgp.ts tables list Client
-npx tsx src/scripts/lgp.ts tables list UrlSettings --limit 10
+python lgp.py tables list ICP
+python lgp.py tables list Client
+python lgp.py tables list UrlSettings --limit 10
 ```
 
 ---
@@ -2972,7 +2972,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables create ICP --data '{
+python lgp.py tables create ICP --data '{
   "client_id": "YOUR_CLIENT",
   "name": "Enterprise SaaS Decision Makers",
   "industries": ["SaaS", "Cloud Computing"],
@@ -3042,7 +3042,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables get ICP ICP_ID
+python lgp.py tables get ICP ICP_ID
 ```
 
 ---
@@ -3122,10 +3122,10 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 
 ```bash
 # Update targeting criteria
-npx tsx src/scripts/lgp.ts tables update ICP ICP_ID --data '{"industries":["SaaS","Cloud Computing","AI/ML"]}'
+python lgp.py tables update ICP ICP_ID --data '{"industries":["SaaS","Cloud Computing","AI/ML"]}'
 
 # Deactivate an ICP
-npx tsx src/scripts/lgp.ts tables update ICP ICP_ID --data '{"isActive":false}'
+python lgp.py tables update ICP ICP_ID --data '{"isActive":false}'
 ```
 
 ---
@@ -3164,7 +3164,7 @@ curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts tables delete ICP ICP_ID
+python lgp.py tables delete ICP ICP_ID
 ```
 
 
@@ -3210,7 +3210,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts email-platforms list
+python lgp.py email-platforms list
 ```
 
 ---
@@ -3268,7 +3268,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts email-platforms send --platform woodpecker --campaign campaign-123 --leads lead-1,lead-2,lead-3
+python lgp.py email-platforms send --platform woodpecker --campaign campaign-123 --leads lead-1,lead-2,lead-3
 ```
 
 
@@ -3339,7 +3339,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd campaigns
+python lgp.py fsd campaigns
 ```
 
 ---
@@ -3397,7 +3397,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd campaign CAMPAIGN_ID
+python lgp.py fsd campaign CAMPAIGN_ID
 ```
 
 ---
@@ -3511,7 +3511,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd create-campaign --client YOUR_CLIENT --name "Q1 Enterprise Outreach" --icp ICP_ID --frequency weekly --target 200
+python lgp.py fsd create-campaign --client YOUR_CLIENT --name "Q1 Enterprise Outreach" --icp ICP_ID --frequency weekly --target 200
 ```
 
 ---
@@ -3572,7 +3572,7 @@ curl -s -X PUT -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd update-campaign CAMPAIGN_ID --name "Updated Name" --target 300
+python lgp.py fsd update-campaign CAMPAIGN_ID --name "Updated Name" --target 300
 ```
 
 ---
@@ -3610,7 +3610,7 @@ curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd deactivate-campaign CAMPAIGN_ID
+python lgp.py fsd deactivate-campaign CAMPAIGN_ID
 ```
 
 ---
@@ -3745,10 +3745,10 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 
 ```bash
 # Run with ICP
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT --icp ICP_ID --target 100
+python lgp.py fsd run --client YOUR_CLIENT --icp ICP_ID --target 100
 
 # Run with direct Apify config
-npx tsx src/scripts/lgp.ts fsd run --client YOUR_CLIENT --actor apify/linkedin-scraper --input '{"searchUrl":"https://..."}' --target 50
+python lgp.py fsd run --client YOUR_CLIENT --actor apify/linkedin-scraper --input '{"searchUrl":"https://..."}' --target 50
 ```
 
 ---
@@ -3852,7 +3852,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts fsd status PIPELINE_ID
+python lgp.py fsd status PIPELINE_ID
 ```
 
 
@@ -3953,10 +3953,10 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 
 ```bash
 # ICP-based
-npx tsx src/scripts/lgp.ts generate from-icp --icp ICP_ID --client CLIENT_ID --max-leads 200
+python lgp.py generate from-icp --icp ICP_ID --client CLIENT_ID --max-leads 200
 
 # Direct Vayne
-npx tsx src/scripts/lgp.ts generate direct --provider vayne --client CLIENT_ID --sales-nav-url "https://www.linkedin.com/sales/search/people?query=..."
+python lgp.py generate direct --provider vayne --client CLIENT_ID --sales-nav-url "https://www.linkedin.com/sales/search/people?query=..."
 ```
 
 ---
@@ -4003,7 +4003,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts generate status RUN_ID
+python lgp.py generate status RUN_ID
 ```
 
 ---
@@ -4057,7 +4057,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts generate history --client CLIENT_ID --limit 10
+python lgp.py generate history --client CLIENT_ID --limit 10
 ```
 
 ---
@@ -4112,7 +4112,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts generate schedule create --icp ICP_ID --client CLIENT_ID --frequency weekly --max-leads 100
+python lgp.py generate schedule create --icp ICP_ID --client CLIENT_ID --frequency weekly --max-leads 100
 ```
 
 ---
@@ -4163,7 +4163,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts generate schedule list
+python lgp.py generate schedule list
 ```
 
 ---
@@ -4222,8 +4222,8 @@ curl -s -X PATCH -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts generate schedule pause SCHEDULE_ID
-npx tsx src/scripts/lgp.ts generate schedule resume SCHEDULE_ID
+python lgp.py generate schedule pause SCHEDULE_ID
+python lgp.py generate schedule resume SCHEDULE_ID
 ```
 
 ---
@@ -4261,7 +4261,7 @@ curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts generate schedule delete SCHEDULE_ID
+python lgp.py generate schedule delete SCHEDULE_ID
 ```
 
 ---
@@ -5353,8 +5353,8 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts epsimo activate --email user@example.com --password secret
-npx tsx src/scripts/lgp.ts epsimo activate --cognito-token eyJ...
+python lgp.py epsimo activate --email user@example.com --password secret
+python lgp.py epsimo activate --cognito-token eyJ...
 ```
 
 ---
@@ -5404,7 +5404,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts epsimo info --token $EPSIMO_TOKEN
+python lgp.py epsimo info --token $EPSIMO_TOKEN
 ```
 
 ---
@@ -5449,7 +5449,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts epsimo credits --token $EPSIMO_TOKEN
+python lgp.py epsimo credits --token $EPSIMO_TOKEN
 ```
 
 ---
@@ -5503,7 +5503,7 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts epsimo purchase --token $EPSIMO_TOKEN --amount 10000
+python lgp.py epsimo purchase --token $EPSIMO_TOKEN --amount 10000
 ```
 
 ---
@@ -5552,7 +5552,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts epsimo threads --token $EPSIMO_TOKEN
+python lgp.py epsimo threads --token $EPSIMO_TOKEN
 ```
 
 ---
@@ -5675,7 +5675,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts account-analysis list --client YOUR_CLIENT --sort avg_score --order desc --min-leads 3
+python lgp.py account-analysis list --client YOUR_CLIENT --sort avg_score --order desc --min-leads 3
 ```
 
 ---
@@ -5761,7 +5761,7 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts account-analysis analyze --client YOUR_CLIENT --company "Acme Corp"
+python lgp.py account-analysis analyze --client YOUR_CLIENT --company "Acme Corp"
 ```
 
 ---
@@ -5855,8 +5855,8 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts account-analysis analyze --client YOUR_CLIENT --limit 10
-npx tsx src/scripts/lgp.ts account-analysis analyze --client YOUR_CLIENT --company "Acme Corp"
+python lgp.py account-analysis analyze --client YOUR_CLIENT --limit 10
+python lgp.py account-analysis analyze --client YOUR_CLIENT --company "Acme Corp"
 ```
 
 ---
@@ -5941,6 +5941,6 @@ curl -s -H "X-API-Key: $LGP_API_KEY" \
 **CLI equivalent:**
 
 ```bash
-npx tsx src/scripts/lgp.ts account-analysis export --client YOUR_CLIENT --format csv --output ./company_analysis.csv
-npx tsx src/scripts/lgp.ts account-analysis export --client YOUR_CLIENT --format json
+python lgp.py account-analysis export --client YOUR_CLIENT --format csv --output ./company_analysis.csv
+python lgp.py account-analysis export --client YOUR_CLIENT --format json
 ```
