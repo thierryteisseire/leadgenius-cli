@@ -53,22 +53,27 @@ All API endpoints live under `/api/automation/`.
 
 ## Installation & Setup
 
+> **Note:** This skill package is documentation-only. The `lgp` CLI script (`lgp.py`) is part of the LeadGenius Pro application repository and is **not included** in this package. Obtain the CLI from your LeadGenius Pro deployment (typically at `.agent/skills/leadgenius-api/scripts/lgp.py` in the application workspace).
+
 The CLI is a Python script requiring Python 3.8+ and the `requests` library (`pip install requests`):
 
 ```bash
 python lgp.py <command> [options]
 ```
 
-### Environment Variables
+### Required Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LGP_API_KEY` | API key with `lgp_` prefix | — (required) |
-| `LGP_URL` | Base URL of the LeadGenius API | `http://localhost:3000` |
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `LGP_API_KEY` | **Yes** | API key with `lgp_` prefix. Created via `POST /api/automation/users/provision`. | — |
+| `LGP_URL` | No | Base URL of the LeadGenius API | `http://localhost:3000` |
+| `LGP_ADMIN_KEY` | No | Admin key to bypass rate limits. Sent as `X-Admin-Key` header alongside `X-API-Key`. Grants elevated access — use only for admin operations. | — |
 
 ```bash
 export LGP_API_KEY="lgp_your_key_here"
 export LGP_URL="https://api.leadgenius.app"
+# Optional — only if you need admin-level rate limit bypass:
+# export LGP_ADMIN_KEY="your_admin_key_here"
 ```
 
 ### Global CLI Options
@@ -76,6 +81,7 @@ export LGP_URL="https://api.leadgenius.app"
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--api-key <key>` | `LGP_API_KEY` env | Override API key |
+| `--admin-key <key>` | `LGP_ADMIN_KEY` env | Override admin key (bypasses rate limits) |
 | `--url <url>` | `LGP_URL` env | Override base URL |
 | `--format <fmt>` | `json` | Output: `json` or `table` |
 
@@ -754,21 +760,6 @@ Before running enrichment, copyright, scoring, or FSD pipelines, these configura
 
 ---
 
-## Source Files
-
-| File | Purpose |
-|------|---------|
-| `src/utils/epsimoApiClient.ts` | Shared EpsimoAI API client, error class, plan derivation, token extraction |
-| `src/app/api/automation/epsimo/users/activate/route.ts` | EpsimoAI activate endpoint |
-| `src/app/api/automation/epsimo/users/info/route.ts` | EpsimoAI user info endpoint |
-| `src/app/api/automation/epsimo/credits/balance/route.ts` | EpsimoAI credit balance endpoint |
-| `src/app/api/automation/epsimo/credits/purchase/route.ts` | EpsimoAI credit purchase (automation) endpoint |
-| `src/app/api/automation/epsimo/threads/route.ts` | EpsimoAI thread usage endpoint |
-| `src/app/api/credits/purchase/route.ts` | Credit purchase (UI/cookie) endpoint |
-| `src/scripts/lgp.ts` | CLI tool source |
-
----
-
 ## License
 
-Proprietary — LeadGenius Pro. All rights reserved.
+See [LICENSE](LICENSE).

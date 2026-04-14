@@ -7,6 +7,8 @@ description: Comprehensive skill for operating the LeadGenius Pro Automation API
 
 This skill teaches AI agents how to operate the **LeadGenius Pro Automation API** and the **`lgp` CLI tool**. It covers the full lifecycle of B2B lead management — from ICP (Ideal Customer Profile) definition and automated lead generation through enrichment, scoring, qualification, and email delivery via the FSD (Full-Stack Demand) pipeline.
 
+> **Documentation-only package.** The `lgp` CLI script (`lgp.py`) is part of the LeadGenius Pro application repository and is not included in this skill package. Obtain the CLI from your LeadGenius Pro deployment.
+
 ## Base URL
 
 ```
@@ -27,6 +29,14 @@ X-API-Key: lgp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - The key determines `company_id`, `owner` identity, and rate limits.
 - Keys are created via `POST /api/automation/users/provision` — the plain-text key is returned only once at creation time.
 - Test your key with `GET /api/automation/auth/test`.
+
+### Required Environment Variables
+
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `LGP_API_KEY` | **Yes** | API key with `lgp_` prefix. Required for all API and CLI operations. | — |
+| `LGP_URL` | No | Base URL of the LeadGenius Pro API. | `http://localhost:3000` |
+| `LGP_ADMIN_KEY` | No | Admin key to bypass rate limits. Sent as `X-Admin-Key` header alongside `X-API-Key`. Grants elevated access — use only for admin operations. | — |
 
 ### Rate Limits
 
@@ -131,6 +141,10 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | Tables / ICP        | [references/api_endpoints.md#tables-generic-crud-with-icp-focus](references/api_endpoints.md#tables-generic-crud-with-icp-focus) |
 | Email Platforms     | [references/api_endpoints.md#email-platforms](references/api_endpoints.md#email-platforms) |
 | FSD Pipeline        | [references/api_endpoints.md#fsd-pipeline](references/api_endpoints.md#fsd-pipeline) |
+| Job Ad Lead Triggering | [references/api_endpoints.md#job-ad-lead-triggering](references/api_endpoints.md#job-ad-lead-triggering) |
+| Lead Notifications (Unipile) | [references/api_endpoints.md#lead-notifications-unipile](references/api_endpoints.md#lead-notifications-unipile) |
+| EpsimoAI            | [references/api_endpoints.md#epsimoai-user--credit-management](references/api_endpoints.md#epsimoai-user--credit-management) |
+| Account-Based Lead Analysis | [references/api_endpoints.md#account-based-lead-analysis](references/api_endpoints.md#account-based-lead-analysis) |
 | Error Codes         | [references/api_endpoints.md#error-codes](references/api_endpoints.md#error-codes) |
 
 ## Quick-Reference: CLI Map
@@ -153,7 +167,9 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | `cognito`          | [references/cli_reference.md#cognito](references/cli_reference.md#cognito) |
 | `org`              | [references/cli_reference.md#org](references/cli_reference.md#org) |
 | `fsd`              | [references/cli_reference.md#fsd](references/cli_reference.md#fsd) |
+| `epsimo`           | [references/cli_reference.md#epsimoai-commands](references/cli_reference.md#epsimoai-commands) |
 | `admin`            | [references/cli_reference.md#admin](references/cli_reference.md#admin) |
+| `account-analysis` | [references/cli_reference.md#account-analysis](references/cli_reference.md#account-analysis) |
 
 ---
 
