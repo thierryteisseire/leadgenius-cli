@@ -1,6 +1,7 @@
 ---
 name: leadgenius-cli
-description: Comprehensive skill for operating the LeadGenius Pro Automation API and lgp CLI. Covers ICP management, FSD pipeline automation, lead generation/enrichment/scoring, user provisioning, territory analysis, webhook management, and email platform integration.
+description: Operate the LeadGenius Pro Automation API and lgp CLI — ICP management, FSD pipeline automation, lead generation/enrichment/scoring, user provisioning, territory analysis, webhooks, and email platform integration.
+metadata: {"openclaw":{"emoji":"🎯","homepage":"https://github.com/thierryteisseire/leadgenius-cli","primaryEnv":"LGP_API_KEY","requires":{"env":["LGP_API_KEY"]}}}
 ---
 
 # LeadGenius Pro — CLI & Automation API Skill
