@@ -23,30 +23,11 @@
     "type": "git",
     "url": "git+https://github.com/thierryteisseire/leadgenius-cli.git"
   },
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
   "author": "Thierry Teisseire",
   "files": [
     "SKILL.md",
     "README.md",
     "references/"
-  ],
-  "leadgenius": {
-    "requiredEnvVars": {
-      "LGP_API_KEY": {
-        "description": "LeadGenius Pro API key (lgp_ prefix). Created via POST /api/automation/users/provision. Required for all API and CLI operations.",
-        "required": true
-      },
-      "LGP_URL": {
-        "description": "Base URL of the LeadGenius Pro API.",
-        "required": false,
-        "default": "http://localhost:3000"
-      },
-      "LGP_ADMIN_KEY": {
-        "description": "Admin key to bypass rate limits. Sent as X-Admin-Key header alongside X-API-Key. Use only for admin operations — grants elevated access.",
-        "required": false
-      }
-    },
-    "cliNotIncluded": true,
-    "cliSource": "The lgp CLI (lgp.py) is part of the LeadGenius Pro application repository, not this skill package. This skill provides documentation only — obtain the CLI from your LeadGenius Pro deployment."
-  }
+  ]
 }

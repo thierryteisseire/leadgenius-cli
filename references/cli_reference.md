@@ -6,19 +6,11 @@ The `lgp` CLI is a thin HTTP client wrapping the Automation API. All business lo
 
 ## Installation & Setup
 
-The CLI is a Python script. It requires Python 3.8+ and the `requests` library:
+No separate installation is required. The CLI runs via `npx tsx`:
 
 ```bash
-pip install requests
+npx tsx src/scripts/lgp.ts <command> [options]
 ```
-
-Run the CLI with:
-
-```bash
-python lgp.py <command> [options]
-```
-
-The script is located at `.agent/skills/leadgenius-api/scripts/lgp.py` in the workspace, or can be copied to any directory.
 
 ### Environment Variables
 
@@ -90,7 +82,7 @@ lgp auth test
 **Example:**
 
 ```bash
-python lgp.py auth test --api-key lgp_abc123def456
+npx tsx src/scripts/lgp.ts auth test --api-key lgp_abc123def456
 ```
 
 **Expected output (json):**
@@ -127,7 +119,7 @@ lgp leads list --client <id> [options]
 **Example:**
 
 ```bash
-python lgp.py leads list \
+npx tsx src/scripts/lgp.ts leads list \
   --client cl_9f3a2b7e \
   --limit 20 \
   --fields firstName,lastName,email,companyName,aiLeadScore
@@ -152,7 +144,7 @@ lgp leads get <id>
 **Example:**
 
 ```bash
-python lgp.py leads get lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab
+npx tsx src/scripts/lgp.ts leads get lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab
 ```
 
 ### `leads import`
@@ -176,7 +168,7 @@ lgp leads import --data '<json-string>'
 **Example — inline single lead:**
 
 ```bash
-python lgp.py leads import --data '{
+npx tsx src/scripts/lgp.ts leads import --data '{
   "client_id": "cl_9f3a2b7e",
   "firstName": "Jane",
   "lastName": "Doe",
@@ -190,7 +182,7 @@ python lgp.py leads import --data '{
 **Example — file import:**
 
 ```bash
-python lgp.py leads import --file ./leads-batch.json
+npx tsx src/scripts/lgp.ts leads import --file ./leads-batch.json
 ```
 
 ### `leads search`
@@ -218,7 +210,7 @@ lgp leads search [options]
 **Example:**
 
 ```bash
-python lgp.py leads search \
+npx tsx src/scripts/lgp.ts leads search \
   --email jane.doe@acmecorp.com \
   --client cl_9f3a2b7e
 ```
@@ -243,7 +235,7 @@ lgp leads dedup --client <id> --match <fields>
 **Example:**
 
 ```bash
-python lgp.py leads dedup \
+npx tsx src/scripts/lgp.ts leads dedup \
   --client cl_9f3a2b7e \
   --match email,linkedinUrl
 ```
@@ -268,7 +260,7 @@ lgp leads dedup-resolve --keep <leadId> --merge <id1,id2,...>
 **Example:**
 
 ```bash
-python lgp.py leads dedup-resolve \
+npx tsx src/scripts/lgp.ts leads dedup-resolve \
   --keep lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
   --merge lead_aaaa1111-bbbb-2222-cccc-333344445555,lead_dddd6666-eeee-7777-ffff-888899990000
 ```
@@ -296,7 +288,7 @@ lgp leads transfer --from <clientId> --to <clientId> [options]
 **Example — dry run:**
 
 ```bash
-python lgp.py leads transfer \
+npx tsx src/scripts/lgp.ts leads transfer \
   --from cl_9f3a2b7e \
   --to cl_4d5e6f7a \
   --all \
@@ -318,7 +310,7 @@ lgp leads validate-ownership
 **Example:**
 
 ```bash
-python lgp.py leads validate-ownership
+npx tsx src/scripts/lgp.ts leads validate-ownership
 ```
 
 ### `leads activity`
@@ -345,7 +337,7 @@ lgp leads activity <leadId> --type <activityType> [options]
 **Example:**
 
 ```bash
-python lgp.py leads activity lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
+npx tsx src/scripts/lgp.ts leads activity lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
   --type email_sent \
   --notes "Initial outreach email" \
   --metadata '{"campaignId":"camp_001","subject":"Quick question about your pipeline"}'
@@ -370,7 +362,75 @@ lgp leads activities <leadId>
 **Example:**
 
 ```bash
-python lgp.py leads activities lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab
+npx tsx src/scripts/lgp.ts leads activities lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab
+```
+
+### `leads update-batch`
+
+Batch update a single field on leads from a CSV file. The CSV must contain an `id` column and the target field column.
+
+**Syntax:**
+
+```bash
+lgp leads update-batch --client-id <id> --field <field> --csv <path>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client-id <id>` | string | Yes | — | Client ID that owns the leads |
+| `--field <field>` | string | Yes | — | Field name to update on each lead |
+| `--csv <path>` | string | Yes | — | Path to CSV file with `id` and target field columns |
+
+**Behavior:**
+- Reads the CSV file and validates it contains `id` and the specified `--field` column
+- Processes rows in batches of 25, sending `PUT /api/automation/leads` with `{leads: [{id, [field]: value}, ...]}`
+- Reports success/failure counts after completion
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads update-batch \
+  --client-id cl_9f3a2b7e \
+  --field companyName \
+  --csv ./leads-update.csv
+```
+
+### `leads prune-blanks`
+
+Scan a client partition and remove leads where firstName, lastName, and companyName are all empty, null, or whitespace.
+
+**Syntax:**
+
+```bash
+lgp leads prune-blanks --client-id <id> [--dry-run]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client-id <id>` | string | Yes | — | Client ID to scan for blank leads |
+| `--dry-run` | boolean | No | `false` | Report blank lead count without deleting |
+
+**Behavior:**
+- Paginates through all leads via `GET /api/automation/leads?client_id=<id>&limit=1000`
+- Identifies blank leads: firstName, lastName, and companyName are all empty/null/whitespace
+- In dry-run mode: reports count of blank leads found
+- In normal mode: deletes blank leads in batches of 25 via `DELETE /api/automation/leads` with `{ids: [...]}`
+- Reports total scanned, blank found, and deleted counts
+
+**Example — dry run:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads prune-blanks --client-id cl_9f3a2b7e --dry-run
+```
+
+**Example — delete blank leads:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads prune-blanks --client-id cl_9f3a2b7e
 ```
 
 ---
@@ -400,7 +460,7 @@ lgp tasks list [options]
 **Example:**
 
 ```bash
-python lgp.py tasks list --status running --type enrichment --limit 10
+npx tsx src/scripts/lgp.ts tasks list --status running --type enrichment --limit 10
 ```
 
 ### `tasks status`
@@ -422,7 +482,7 @@ lgp tasks status <jobId>
 **Example:**
 
 ```bash
-python lgp.py tasks status job_7a8b9c0d-1234-5678-abcd-ef0123456789
+npx tsx src/scripts/lgp.ts tasks status job_7a8b9c0d-1234-5678-abcd-ef0123456789
 ```
 
 ### `tasks enrich`
@@ -447,7 +507,7 @@ lgp tasks enrich --lead <leadId> [options]
 **Example:**
 
 ```bash
-python lgp.py tasks enrich \
+npx tsx src/scripts/lgp.ts tasks enrich \
   --lead lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
   --services companyUrl,emailFinder,enrichment1
 ```
@@ -474,7 +534,7 @@ lgp tasks copyright --lead <leadId> [options]
 **Example:**
 
 ```bash
-python lgp.py tasks copyright \
+npx tsx src/scripts/lgp.ts tasks copyright \
   --lead lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
   --processes enrichment1,enrichment2
 ```
@@ -501,7 +561,7 @@ lgp tasks score --lead <leadId> [options]
 **Example:**
 
 ```bash
-python lgp.py tasks score \
+npx tsx src/scripts/lgp.ts tasks score \
   --lead lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
   --fields aiLeadScore,aiQualification,aiNextAction
 ```
@@ -533,7 +593,7 @@ lgp companies list --client <id> [options]
 **Example:**
 
 ```bash
-python lgp.py companies list \
+npx tsx src/scripts/lgp.ts companies list \
   --client cl_9f3a2b7e \
   --sort averageLeadScore \
   --limit 25
@@ -558,7 +618,7 @@ lgp companies get <id>
 **Example:**
 
 ```bash
-python lgp.py companies get tc_1a2b3c4d-5678-9abc-def0-123456789abc
+npx tsx src/scripts/lgp.ts companies get tc_1a2b3c4d-5678-9abc-def0-123456789abc
 ```
 
 ### `companies leads`
@@ -581,7 +641,7 @@ lgp companies leads <id> [options]
 **Example:**
 
 ```bash
-python lgp.py companies leads tc_1a2b3c4d-5678-9abc-def0-123456789abc \
+npx tsx src/scripts/lgp.ts companies leads tc_1a2b3c4d-5678-9abc-def0-123456789abc \
   --limit 50
 ```
 
@@ -604,7 +664,7 @@ lgp companies content-analysis <id>
 **Example:**
 
 ```bash
-python lgp.py companies content-analysis tc_1a2b3c4d-5678-9abc-def0-123456789abc
+npx tsx src/scripts/lgp.ts companies content-analysis tc_1a2b3c4d-5678-9abc-def0-123456789abc
 ```
 
 ---
@@ -634,7 +694,7 @@ lgp webhooks list [options]
 **Example:**
 
 ```bash
-python lgp.py webhooks list \
+npx tsx src/scripts/lgp.ts webhooks list \
   --platform woodpecker \
   --event-type email_opened \
   --limit 30
@@ -659,7 +719,7 @@ lgp webhooks get <id>
 **Example:**
 
 ```bash
-python lgp.py webhooks get wh_evt_aabb1122-ccdd-3344-eeff-556677889900
+npx tsx src/scripts/lgp.ts webhooks get wh_evt_aabb1122-ccdd-3344-eeff-556677889900
 ```
 
 ### `webhooks reprocess`
@@ -681,7 +741,7 @@ lgp webhooks reprocess <id>
 **Example:**
 
 ```bash
-python lgp.py webhooks reprocess wh_evt_aabb1122-ccdd-3344-eeff-556677889900
+npx tsx src/scripts/lgp.ts webhooks reprocess wh_evt_aabb1122-ccdd-3344-eeff-556677889900
 ```
 
 
@@ -711,13 +771,13 @@ lgp tables list <tableName> [options]
 **Example — list all ICP records:**
 
 ```bash
-python lgp.py tables list ICP
+npx tsx src/scripts/lgp.ts tables list ICP
 ```
 
 **Example — list clients:**
 
 ```bash
-python lgp.py tables list Client --limit 10
+npx tsx src/scripts/lgp.ts tables list Client --limit 10
 ```
 
 ### `tables create`
@@ -740,7 +800,7 @@ lgp tables create <tableName> --data '<json-string>'
 **Example — create an ICP with targeting criteria and Apify config:**
 
 ```bash
-python lgp.py tables create ICP --data '{
+npx tsx src/scripts/lgp.ts tables create ICP --data '{
   "name": "Enterprise SaaS Decision Makers",
   "client_id": "cl_9f3a2b7e",
   "industries": ["SaaS", "Cloud Computing", "Enterprise Software"],
@@ -761,7 +821,7 @@ python lgp.py tables create ICP --data '{
 **Example — create a Client:**
 
 ```bash
-python lgp.py tables create Client --data '{
+npx tsx src/scripts/lgp.ts tables create Client --data '{
   "name": "Q1 Campaign",
   "description": "Leads for Q1 outbound campaign"
 }'
@@ -787,7 +847,7 @@ lgp tables get <tableName> <id>
 **Example — get an ICP record:**
 
 ```bash
-python lgp.py tables get ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc
+npx tsx src/scripts/lgp.ts tables get ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc
 ```
 
 ### `tables update`
@@ -811,7 +871,7 @@ lgp tables update <tableName> <id> --data '<json-string>'
 **Example — update ICP targeting criteria:**
 
 ```bash
-python lgp.py tables update ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc --data '{
+npx tsx src/scripts/lgp.ts tables update ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc --data '{
   "jobTitles": ["VP of Sales", "Head of Revenue", "CRO", "Director of Sales"],
   "companySizes": ["201-500", "501-1000", "1001-5000"]
 }'
@@ -820,7 +880,7 @@ python lgp.py tables update ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc --data 
 **Example — deactivate an ICP:**
 
 ```bash
-python lgp.py tables update ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc --data '{
+npx tsx src/scripts/lgp.ts tables update ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc --data '{
   "isActive": false
 }'
 ```
@@ -845,7 +905,7 @@ lgp tables delete <tableName> <id>
 **Example — delete an ICP:**
 
 ```bash
-python lgp.py tables delete ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc
+npx tsx src/scripts/lgp.ts tables delete ICP icp_a1b2c3d4-5678-9abc-def0-123456789abc
 ```
 
 ---
@@ -869,7 +929,7 @@ lgp email-platforms list
 **Example:**
 
 ```bash
-python lgp.py email-platforms list
+npx tsx src/scripts/lgp.ts email-platforms list
 ```
 
 ### `email-platforms send`
@@ -893,7 +953,7 @@ lgp email-platforms send --platform <name> --campaign <id> --leads <id1,id2,...>
 **Example:**
 
 ```bash
-python lgp.py email-platforms send \
+npx tsx src/scripts/lgp.ts email-platforms send \
   --platform woodpecker \
   --campaign camp_12345 \
   --leads lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab,lead_aaaa1111-bbbb-2222-cccc-333344445555
@@ -925,7 +985,7 @@ lgp users list [options]
 **Example:**
 
 ```bash
-python lgp.py users list --group admin --limit 20
+npx tsx src/scripts/lgp.ts users list --group admin --limit 20
 ```
 
 ### `users get`
@@ -947,7 +1007,7 @@ lgp users get <id>
 **Example:**
 
 ```bash
-python lgp.py users get usr_1a2b3c4d-5678-9abc-def0-123456789abc
+npx tsx src/scripts/lgp.ts users get usr_1a2b3c4d-5678-9abc-def0-123456789abc
 ```
 
 ### `users create`
@@ -971,7 +1031,7 @@ lgp users create --email <email> [options]
 **Example:**
 
 ```bash
-python lgp.py users create \
+npx tsx src/scripts/lgp.ts users create \
   --email newuser@acmecorp.com \
   --role member \
   --group user
@@ -999,7 +1059,7 @@ lgp users update <id> [options]
 **Example:**
 
 ```bash
-python lgp.py users update usr_1a2b3c4d-5678-9abc-def0-123456789abc \
+npx tsx src/scripts/lgp.ts users update usr_1a2b3c4d-5678-9abc-def0-123456789abc \
   --role admin \
   --group admin
 ```
@@ -1023,7 +1083,7 @@ lgp users delete <id>
 **Example:**
 
 ```bash
-python lgp.py users delete usr_1a2b3c4d-5678-9abc-def0-123456789abc
+npx tsx src/scripts/lgp.ts users delete usr_1a2b3c4d-5678-9abc-def0-123456789abc
 ```
 
 ### `users provision`
@@ -1051,7 +1111,7 @@ lgp users provision --email <email> --password <password> [options]
 **Example — provision with new company:**
 
 ```bash
-python lgp.py users provision \
+npx tsx src/scripts/lgp.ts users provision \
   --email admin@newcorp.com \
   --password "SecurePass123!" \
   --name "Admin User" \
@@ -1063,7 +1123,7 @@ python lgp.py users provision \
 **Example — provision into existing company:**
 
 ```bash
-python lgp.py users provision \
+npx tsx src/scripts/lgp.ts users provision \
   --email teammate@newcorp.com \
   --password "SecurePass456!" \
   --name "Team Member" \
@@ -1097,7 +1157,7 @@ lgp cognito list [options]
 **Example:**
 
 ```bash
-python lgp.py cognito list --limit 20
+npx tsx src/scripts/lgp.ts cognito list --limit 20
 ```
 
 ### `cognito get`
@@ -1119,7 +1179,7 @@ lgp cognito get --email <email>
 **Example:**
 
 ```bash
-python lgp.py cognito get --email admin@newcorp.com
+npx tsx src/scripts/lgp.ts cognito get --email admin@newcorp.com
 ```
 
 ### `cognito create`
@@ -1143,7 +1203,7 @@ lgp cognito create --email <email> --password <password> [options]
 **Example:**
 
 ```bash
-python lgp.py cognito create \
+npx tsx src/scripts/lgp.ts cognito create \
   --email newuser@acmecorp.com \
   --password "SecurePass789!" \
   --name "New User"
@@ -1168,7 +1228,7 @@ lgp cognito enable --email <email>
 **Example:**
 
 ```bash
-python lgp.py cognito enable --email user@acmecorp.com
+npx tsx src/scripts/lgp.ts cognito enable --email user@acmecorp.com
 ```
 
 ### `cognito disable`
@@ -1190,7 +1250,7 @@ lgp cognito disable --email <email>
 **Example:**
 
 ```bash
-python lgp.py cognito disable --email user@acmecorp.com
+npx tsx src/scripts/lgp.ts cognito disable --email user@acmecorp.com
 ```
 
 ---
@@ -1218,7 +1278,7 @@ lgp org list [options]
 **Example:**
 
 ```bash
-python lgp.py org list --limit 10
+npx tsx src/scripts/lgp.ts org list --limit 10
 ```
 
 ### `org get`
@@ -1240,7 +1300,7 @@ lgp org get <id>
 **Example:**
 
 ```bash
-python lgp.py org get comp_abc123
+npx tsx src/scripts/lgp.ts org get comp_abc123
 ```
 
 ### `org create`
@@ -1262,7 +1322,7 @@ lgp org create --name <name>
 **Example:**
 
 ```bash
-python lgp.py org create --name "Acme Corp"
+npx tsx src/scripts/lgp.ts org create --name "Acme Corp"
 ```
 
 ### `org rename`
@@ -1285,7 +1345,7 @@ lgp org rename <id> --name <newName>
 **Example:**
 
 ```bash
-python lgp.py org rename comp_abc123 --name "Acme Corporation"
+npx tsx src/scripts/lgp.ts org rename comp_abc123 --name "Acme Corporation"
 ```
 
 ### `org delete`
@@ -1307,7 +1367,7 @@ lgp org delete <id>
 **Example:**
 
 ```bash
-python lgp.py org delete comp_abc123
+npx tsx src/scripts/lgp.ts org delete comp_abc123
 ```
 
 ### `org users`
@@ -1330,7 +1390,7 @@ lgp org users <companyId> [options]
 **Example:**
 
 ```bash
-python lgp.py org users comp_abc123 --limit 20
+npx tsx src/scripts/lgp.ts org users comp_abc123 --limit 20
 ```
 
 ### `org add-user`
@@ -1356,7 +1416,7 @@ lgp org add-user <companyId> --email <email> [options]
 **Example:**
 
 ```bash
-python lgp.py org add-user comp_abc123 \
+npx tsx src/scripts/lgp.ts org add-user comp_abc123 \
   --email colleague@acmecorp.com \
   --role member \
   --group user
@@ -1384,7 +1444,7 @@ lgp org update-user <userId> [options]
 **Example:**
 
 ```bash
-python lgp.py org update-user usr_1a2b3c4d-5678-9abc-def0-123456789abc \
+npx tsx src/scripts/lgp.ts org update-user usr_1a2b3c4d-5678-9abc-def0-123456789abc \
   --role admin \
   --group admin \
   --status active
@@ -1409,7 +1469,7 @@ lgp org remove-user <userId>
 **Example:**
 
 ```bash
-python lgp.py org remove-user usr_1a2b3c4d-5678-9abc-def0-123456789abc
+npx tsx src/scripts/lgp.ts org remove-user usr_1a2b3c4d-5678-9abc-def0-123456789abc
 ```
 
 ---
@@ -1433,7 +1493,7 @@ lgp fsd campaigns
 **Example:**
 
 ```bash
-python lgp.py fsd campaigns
+npx tsx src/scripts/lgp.ts fsd campaigns
 ```
 
 ### `fsd campaign`
@@ -1455,7 +1515,7 @@ lgp fsd campaign <id>
 **Example:**
 
 ```bash
-python lgp.py fsd campaign fsd_camp_a1b2c3d4
+npx tsx src/scripts/lgp.ts fsd campaign fsd_camp_a1b2c3d4
 ```
 
 ### `fsd create-campaign`
@@ -1488,7 +1548,7 @@ lgp fsd create-campaign --client <clientId> --name <name> [options]
 **Example — create with ICP and full automation:**
 
 ```bash
-python lgp.py fsd create-campaign \
+npx tsx src/scripts/lgp.ts fsd create-campaign \
   --client cl_9f3a2b7e \
   --name "Q1 Enterprise Outreach" \
   --icp icp_a1b2c3d4-5678-9abc-def0-123456789abc \
@@ -1526,7 +1586,7 @@ lgp fsd update-campaign <id> [options]
 **Example:**
 
 ```bash
-python lgp.py fsd update-campaign fsd_camp_a1b2c3d4 \
+npx tsx src/scripts/lgp.ts fsd update-campaign fsd_camp_a1b2c3d4 \
   --target 300 \
   --frequency weekly \
   --enrich true \
@@ -1552,7 +1612,7 @@ lgp fsd deactivate-campaign <id>
 **Example:**
 
 ```bash
-python lgp.py fsd deactivate-campaign fsd_camp_a1b2c3d4
+npx tsx src/scripts/lgp.ts fsd deactivate-campaign fsd_camp_a1b2c3d4
 ```
 
 ### `fsd run`
@@ -1580,7 +1640,7 @@ lgp fsd run --client <clientId> [options]
 **Example — ICP-driven run:**
 
 ```bash
-python lgp.py fsd run \
+npx tsx src/scripts/lgp.ts fsd run \
   --client cl_9f3a2b7e \
   --icp icp_a1b2c3d4-5678-9abc-def0-123456789abc \
   --target 200 \
@@ -1591,7 +1651,7 @@ python lgp.py fsd run \
 **Example — direct Apify run (without ICP):**
 
 ```bash
-python lgp.py fsd run \
+npx tsx src/scripts/lgp.ts fsd run \
   --client cl_9f3a2b7e \
   --actor apify/linkedin-sales-navigator \
   --input '{"searchUrl":"https://www.linkedin.com/sales/search/people?query=..."}' \
@@ -1617,7 +1677,242 @@ lgp fsd status <pipelineId>
 **Example:**
 
 ```bash
-python lgp.py fsd status pipeline_x1y2z3w4
+npx tsx src/scripts/lgp.ts fsd status pipeline_x1y2z3w4
+```
+
+---
+
+## maintenance
+
+Manage maintenance items: bug reports and enhancement requests. These commands use the standard API key authentication (not admin key).
+
+### `maintenance bugs list`
+
+List all bug reports.
+
+**Syntax:**
+
+```bash
+lgp maintenance bugs list
+```
+
+**Flags:** None (uses global options only). Supports `--format json|table`.
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts maintenance bugs list
+npx tsx src/scripts/lgp.ts maintenance bugs list --format table
+```
+
+### `maintenance bugs report`
+
+Report a new bug.
+
+**Syntax:**
+
+```bash
+lgp maintenance bugs report --desc <description> [--email <email>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--desc <description>` | string | Yes | — | Description of the bug |
+| `--email <email>` | string | No | — | Reporter email address |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts maintenance bugs report \
+  --desc "Enrichment fails on LinkedIn URLs with special characters" \
+  --email developer@acmecorp.com
+```
+
+### `maintenance enhancements list`
+
+List all enhancement requests.
+
+**Syntax:**
+
+```bash
+lgp maintenance enhancements list
+```
+
+**Flags:** None (uses global options only). Supports `--format json|table`.
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts maintenance enhancements list
+npx tsx src/scripts/lgp.ts maintenance enhancements list --format table
+```
+
+### `maintenance enhancements request`
+
+Submit a new enhancement request.
+
+**Syntax:**
+
+```bash
+lgp maintenance enhancements request --desc <description> [--email <email>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--desc <description>` | string | Yes | — | Description of the enhancement |
+| `--email <email>` | string | No | — | Requester email address |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts maintenance enhancements request \
+  --desc "Add support for Google Maps leads" \
+  --email developer@acmecorp.com
+```
+
+---
+
+## pipeline
+
+View pipeline analytics with optional date range filtering.
+
+### `pipeline`
+
+Show pipeline analytics for a date range.
+
+**Syntax:**
+
+```bash
+lgp pipeline [--start <date>] [--end <date>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--start <date>` | string | No | 30 days ago | Start date (ISO format, e.g., `2026-01-01`) |
+| `--end <date>` | string | No | today | End date (ISO format, e.g., `2026-02-01`) |
+
+**Behavior:**
+- Calls `GET /api/analytics/pipeline` with `startDate` and `endDate` query params
+- Defaults to the last 30 days when dates are omitted
+- Supports `--format json|table`
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts pipeline --start 2026-01-01 --end 2026-02-01
+npx tsx src/scripts/lgp.ts pipeline --format table
+```
+
+---
+
+## campaigns
+
+Manage marketing campaigns: list and create.
+
+### `campaigns list`
+
+List all campaigns.
+
+**Syntax:**
+
+```bash
+lgp campaigns list
+```
+
+**Flags:** None (uses global options only). Supports `--format json|table`.
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts campaigns list
+npx tsx src/scripts/lgp.ts campaigns list --format table
+```
+
+### `campaigns create`
+
+Create a new campaign.
+
+**Syntax:**
+
+```bash
+lgp campaigns create --name <name> [--type <type>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--name <name>` | string | Yes | — | Campaign name |
+| `--type <type>` | string | No | `abm` | Campaign type (e.g., `abm`, `outbound`) |
+
+**Behavior:**
+- Calls `POST /api/campaigns` with `{name, campaignType: type || 'abm', status: 'active'}`
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts campaigns create --name "Q3 Enterprise Outreach"
+npx tsx src/scripts/lgp.ts campaigns create --name "Q3 Outbound" --type outbound
+```
+
+---
+
+## clients
+
+Manage clients: list and create. Clients provide data isolation for leads.
+
+### `clients list`
+
+List all clients with their details.
+
+**Syntax:**
+
+```bash
+lgp clients list
+```
+
+**Flags:** None (uses global options only). Supports `--format json|table`.
+
+**Table columns (--format table):** `id`, `client_id`, `clientName`
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts clients list
+npx tsx src/scripts/lgp.ts clients list --format table
+```
+
+### `clients create`
+
+Create a new client.
+
+**Syntax:**
+
+```bash
+lgp clients create --name <name> [--url <url>]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--name <name>` | string | Yes | — | Client display name |
+| `--url <url>` | string | No | — | Company website URL |
+
+**Behavior:**
+- Calls `POST /api/automation/tables/Client` with `{clientName, companyURL?}`
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts clients create --name "Acme Corp"
+npx tsx src/scripts/lgp.ts clients create --name "Beta Inc" --url "https://beta.io"
 ```
 
 ---
@@ -1654,8 +1949,8 @@ lgp epsimo activate --cognito-token <token>
 **Example:**
 
 ```bash
-python lgp.py epsimo activate --email user@example.com --password secret
-python lgp.py epsimo activate --cognito-token eyJ...
+npx tsx src/scripts/lgp.ts epsimo activate --email user@example.com --password secret
+npx tsx src/scripts/lgp.ts epsimo activate --cognito-token eyJ...
 ```
 
 ### `epsimo info`
@@ -1679,8 +1974,8 @@ lgp epsimo info --token <epsimoToken>
 **Example:**
 
 ```bash
-python lgp.py epsimo info --token eyJ...
-python lgp.py epsimo info --token eyJ... --format table
+npx tsx src/scripts/lgp.ts epsimo info --token eyJ...
+npx tsx src/scripts/lgp.ts epsimo info --token eyJ... --format table
 ```
 
 ### `epsimo credits`
@@ -1704,7 +1999,7 @@ lgp epsimo credits --token <epsimoToken>
 **Example:**
 
 ```bash
-python lgp.py epsimo credits --token eyJ...
+npx tsx src/scripts/lgp.ts epsimo credits --token eyJ...
 ```
 
 ### `epsimo purchase`
@@ -1731,7 +2026,7 @@ lgp epsimo purchase --token <epsimoToken> --amount <n>
 **Example:**
 
 ```bash
-python lgp.py epsimo purchase --token eyJ... --amount 10000
+npx tsx src/scripts/lgp.ts epsimo purchase --token eyJ... --amount 10000
 ```
 
 ### `epsimo threads`
@@ -1757,251 +2052,10 @@ lgp epsimo threads --token <epsimoToken>
 **Example:**
 
 ```bash
-python lgp.py epsimo threads --token eyJ...
-python lgp.py epsimo threads --token eyJ... --format table
+npx tsx src/scripts/lgp.ts epsimo threads --token eyJ...
+npx tsx src/scripts/lgp.ts epsimo threads --token eyJ... --format table
 ```
 
-
----
-
-## clients
-
-Manage clients (data partitions) for your company.
-
-### `clients list`
-
-List all clients belonging to your company.
-
-**Syntax:**
-
-```bash
-lgp clients list
-```
-
-**Example:**
-
-```bash
-python lgp.py clients list
-```
-
-**Expected output:**
-
-```
-ID                                       Client ID                       Name
----------------------------------------  ------------------------------  --------------------
-rec-uuid-1                               client-acme-q1                  Q1 Campaign
-rec-uuid-2                               client-acme-q2                  Q2 Outbound
-```
-
----
-
-### `clients create`
-
-Create a new client partition.
-
-**Syntax:**
-
-```bash
-lgp clients create --name <name> [--url <url>]
-```
-
-**Flags:**
-
-| Flag | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `--name <name>` | string | Yes | — | Display name for the client |
-| `--url <url>` | string | No | — | Company website URL |
-
-**Example:**
-
-```bash
-python lgp.py clients create --name "Q3 Campaign" --url "https://acme.com"
-```
-
-**Expected output:**
-
-```
-Client created:
-  ID:        rec-uuid-3
-  Client ID: client-acme-q3
-```
-
----
-
-## maintenance
-
-Report bugs and request enhancements via the `lgp` CLI. These go through the Automation API (`/api/agent/maintenance/*`) using your API key.
-
-> For standalone Node.js scripts that bypass the API, see the [Maintenance CLI (Standalone Node.js Scripts)](#maintenance-cli-standalone-nodejs-scripts) section in SKILL.md.
-
-### `maintenance bugs list`
-
-List all reported bugs.
-
-**Syntax:**
-
-```bash
-lgp maintenance bugs list
-```
-
-**Example:**
-
-```bash
-python lgp.py maintenance bugs list
-```
-
----
-
-### `maintenance bugs report`
-
-Report a new bug.
-
-**Syntax:**
-
-```bash
-lgp maintenance bugs report --desc <description> [--email <email>]
-```
-
-**Flags:**
-
-| Flag | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `--desc <text>` | string | Yes | — | Description of the bug |
-| `--email <email>` | string | No | — | Contact email for follow-up |
-
-**Example:**
-
-```bash
-python lgp.py maintenance bugs report --desc "Login fails on mobile Safari" --email user@example.com
-```
-
-**Expected output:**
-
-```
-Bug reported: ID 0917ea6f-a1ae-437f-b085-d776309e0a69
-```
-
----
-
-### `maintenance enhancements list`
-
-List all enhancement requests.
-
-**Syntax:**
-
-```bash
-lgp maintenance enhancements list
-```
-
-**Example:**
-
-```bash
-python lgp.py maintenance enhancements list
-```
-
----
-
-### `maintenance enhancements request`
-
-Submit a new enhancement request.
-
-**Syntax:**
-
-```bash
-lgp maintenance enhancements request --desc <description> [--email <email>]
-```
-
-**Flags:**
-
-| Flag | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `--desc <text>` | string | Yes | — | Description of the enhancement |
-| `--email <email>` | string | No | — | Contact email for follow-up |
-
-**Example:**
-
-```bash
-python lgp.py maintenance enhancements request --desc "Add bulk CSV export for enriched leads"
-```
-
-**Expected output:**
-
-```
-Enhancement requested: ID fb3af1d4-21b3-4611-...
-```
-
----
-
-## pipeline
-
-Show pipeline analytics for a date range.
-
-### `pipeline`
-
-**Syntax:**
-
-```bash
-lgp pipeline [--start <YYYY-MM-DD>] [--end <YYYY-MM-DD>]
-```
-
-**Flags:**
-
-| Flag | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `--start <date>` | string | No | 30 days ago | Start date (YYYY-MM-DD) |
-| `--end <date>` | string | No | today | End date (YYYY-MM-DD) |
-
-**Example:**
-
-```bash
-python lgp.py pipeline --start 2026-01-01 --end 2026-03-31
-```
-
----
-
-## campaigns
-
-Manage campaigns.
-
-### `campaigns list`
-
-List all campaigns.
-
-**Syntax:**
-
-```bash
-lgp campaigns list
-```
-
-**Example:**
-
-```bash
-python lgp.py campaigns list
-```
-
----
-
-### `campaigns create`
-
-Create a new campaign.
-
-**Syntax:**
-
-```bash
-lgp campaigns create --name <name>
-```
-
-**Flags:**
-
-| Flag | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `--name <name>` | string | Yes | — | Campaign name |
-
-**Example:**
-
-```bash
-python lgp.py campaigns create --name "Q2 ABM Campaign"
-```
 
 ---
 
@@ -2033,7 +2087,7 @@ lgp generate from-icp --icp <icpId> --client <clientId> [options]
 **Example:**
 
 ```bash
-python lgp.py generate from-icp \
+npx tsx src/scripts/lgp.ts generate from-icp \
   --icp icp_a1b2c3d4-5678-9abc-def0-123456789abc \
   --client cl_9f3a2b7e \
   --max-leads 200 \
@@ -2073,7 +2127,7 @@ lgp generate direct --provider <name> --config <json> --client <clientId> [optio
 **Example — Vayne with Sales Navigator URL:**
 
 ```bash
-python lgp.py generate direct \
+npx tsx src/scripts/lgp.ts generate direct \
   --provider vayne \
   --config '{"maxLeads":100}' \
   --client cl_9f3a2b7e \
@@ -2083,7 +2137,7 @@ python lgp.py generate direct \
 **Example — Generic HTTP provider:**
 
 ```bash
-python lgp.py generate direct \
+npx tsx src/scripts/lgp.ts generate direct \
   --provider generic \
   --config '{"endpointUrl":"https://api.example.com/scrape","method":"POST","bodyTemplate":{"query":"SaaS","limit":50},"responseMapping":{"firstName":"first_name","email":"contact_email"}}' \
   --client cl_9f3a2b7e
@@ -2108,7 +2162,7 @@ lgp generate status <runId>
 **Example:**
 
 ```bash
-python lgp.py generate status run_abc123def456
+npx tsx src/scripts/lgp.ts generate status run_abc123def456
 ```
 
 **Expected output (json):**
@@ -2151,7 +2205,7 @@ lgp generate history [options]
 **Example:**
 
 ```bash
-python lgp.py generate history --client cl_9f3a2b7e --status completed --limit 10
+npx tsx src/scripts/lgp.ts generate history --client cl_9f3a2b7e --status completed --limit 10
 ```
 
 **Table columns (--format table):** `id`, `searchName`, `status`, `providerType`, `totalLeadsFound`, `totalLeadsSaved`, `createdAt`
@@ -2178,7 +2232,7 @@ lgp generate schedule create --icp <icpId> --client <clientId> --frequency <freq
 **Example:**
 
 ```bash
-python lgp.py generate schedule create \
+npx tsx src/scripts/lgp.ts generate schedule create \
   --icp icp_a1b2c3d4-5678-9abc-def0-123456789abc \
   --client cl_9f3a2b7e \
   --frequency weekly \
@@ -2211,7 +2265,7 @@ lgp generate schedule list
 **Example:**
 
 ```bash
-python lgp.py generate schedule list --format table
+npx tsx src/scripts/lgp.ts generate schedule list --format table
 ```
 
 **Table columns (--format table):** `id`, `icpName`, `clientName`, `frequencyPreset`, `enabled`, `status`, `nextRunAt`, `totalRuns`
@@ -2235,7 +2289,7 @@ lgp generate schedule pause <scheduleId>
 **Example:**
 
 ```bash
-python lgp.py generate schedule pause sched-uuid
+npx tsx src/scripts/lgp.ts generate schedule pause sched-uuid
 ```
 
 ### `generate schedule resume`
@@ -2257,7 +2311,7 @@ lgp generate schedule resume <scheduleId>
 **Example:**
 
 ```bash
-python lgp.py generate schedule resume sched-uuid
+npx tsx src/scripts/lgp.ts generate schedule resume sched-uuid
 ```
 
 ### `generate schedule delete`
@@ -2279,16 +2333,14 @@ lgp generate schedule delete <scheduleId>
 **Example:**
 
 ```bash
-python lgp.py generate schedule delete sched-uuid
+npx tsx src/scripts/lgp.ts generate schedule delete sched-uuid
 ```
 
 ---
 
 ## admin
 
-Manage platform administration: companies, members, users, views, clients, and organisation trees. All admin commands require the `LGP_ADMIN_KEY` environment variable to be set. The CLI sends `X-Admin-Key` header on every admin request for authentication.
-
-> **Note:** The admin CLI uses Python (`lgp.py`) and communicates with `/api/admin/*` endpoints. All commands support the `--json` flag for raw JSON output.
+Manage platform administration: companies, members, users, views, clients, backups, and organisation trees. All admin commands require the `LGP_ADMIN_KEY` environment variable or `--admin-key` flag. The CLI sends `X-Admin-Key` header on every admin request for authentication.
 
 ### Environment Variables
 
@@ -2296,7 +2348,79 @@ Manage platform administration: companies, members, users, views, clients, and o
 |----------|-------------|----------|
 | `LGP_ADMIN_KEY` | Admin secret key for `X-Admin-Key` header | Yes (for all admin commands) |
 
-If `LGP_ADMIN_KEY` is not set, the CLI exits with an error message instructing the user to set the variable.
+If `LGP_ADMIN_KEY` is not set and `--admin-key` is not provided, the CLI exits with an error message instructing the user to set the variable.
+
+---
+
+### `admin org-tree`
+
+Display the organisation tree for a company showing members, roles, client access, and views. Shorthand for `admin companies org-tree`.
+
+**Syntax:**
+
+```bash
+lgp admin org-tree --company <id> [--detailed] [--json]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--company <id>` | string | Yes | — | Company ID to display org tree for |
+| `--detailed` | boolean | No | `false` | Show full view lists, client names, menuAccess, and permissions for each member |
+| `--json` | boolean | No | `false` | Output raw JSON from the org-tree API instead of ASCII tree |
+
+**Behavior:**
+- Calls `GET /api/admin/companies/<id>/org-tree` using `adminApiRequest`
+- Sorts members by role priority: owner > admin > member > viewer
+- Renders ASCII tree with Unicode box-drawing characters (├──, └──, │)
+- Basic mode shows `email [role, group]`, `Client Access: <mode>`, `Views: <count>`
+- Detailed mode additionally shows menu access and permissions for each member
+
+**Example (default):**
+
+```bash
+npx tsx src/scripts/lgp.ts admin org-tree --company company-abc123
+```
+
+**Expected output (default):**
+
+```
+Acme Corp
+├── owner@acme.com [owner, admin]
+│   ├── Client Access: all
+│   └── Views: 6 views
+├── user1@acme.com [member, user]
+│   ├── Client Access: specific (2 clients)
+│   └── Views: 3 views
+└── user2@acme.com [viewer, viewer]
+    ├── Client Access: all
+    └── Views: 1 view
+```
+
+**Example (detailed):**
+
+```bash
+npx tsx src/scripts/lgp.ts admin org-tree --company company-abc123 --detailed
+```
+
+**Expected output (detailed):**
+
+```
+Acme Corp
+├── owner@acme.com [owner, admin]
+│   ├── Client Access: all
+│   ├── Views: full, prod2, focus, marketing, sales, analyst
+│   ├── Menu Access: (none)
+│   └── Permissions: (none)
+└── user1@acme.com [member, user]
+    ├── Client Access: specific
+    │   ├── Q1 Campaign (client-abc)
+    │   └── Q2 Outbound (client-def)
+    ├── Views: prod2, focus
+    ├── Menu Access: dashboard, leads
+    └── Permissions: canExport=true, canDelete=false
+```
 
 ---
 
@@ -3105,7 +3229,7 @@ lgp account-analysis list --client <ID> [options]
 **Example:**
 
 ```bash
-python lgp.py account-analysis list \
+npx tsx src/scripts/lgp.ts account-analysis list \
   --client cl_9f3a2b7e \
   --sort avg_score \
   --order desc \
@@ -3142,13 +3266,13 @@ lgp account-analysis analyze --client <ID> [options]
 **Example — all companies:**
 
 ```bash
-python lgp.py account-analysis analyze --client cl_9f3a2b7e
+npx tsx src/scripts/lgp.ts account-analysis analyze --client cl_9f3a2b7e
 ```
 
 **Example — single company:**
 
 ```bash
-python lgp.py account-analysis analyze \
+npx tsx src/scripts/lgp.ts account-analysis analyze \
   --client cl_9f3a2b7e \
   --company "Acme Corp"
 ```
@@ -3178,7 +3302,7 @@ lgp account-analysis export --client <ID> --format <csv|json> [options]
 **Example — export CSV to file:**
 
 ```bash
-python lgp.py account-analysis export \
+npx tsx src/scripts/lgp.ts account-analysis export \
   --client cl_9f3a2b7e \
   --format csv \
   --output ./company-analysis.csv
@@ -3187,7 +3311,7 @@ python lgp.py account-analysis export \
 **Example — export JSON to stdout:**
 
 ```bash
-python lgp.py account-analysis export \
+npx tsx src/scripts/lgp.ts account-analysis export \
   --client cl_9f3a2b7e \
   --format json
 ```
@@ -3213,7 +3337,7 @@ lgp account-analysis cache-clear [options]
 **Example:**
 
 ```bash
-python lgp.py account-analysis cache-clear --client cl_9f3a2b7e
+npx tsx src/scripts/lgp.ts account-analysis cache-clear --client cl_9f3a2b7e
 ```
 
 **Cache details:**
@@ -3221,3 +3345,158 @@ python lgp.py account-analysis cache-clear --client cl_9f3a2b7e
 - TTL: 15 minutes
 - Use `--no-cache` on any subcommand to bypass cache for a single request
 - Use `--refresh` to invalidate and re-fetch
+
+---
+
+## shares
+
+Manage shared CRM/SDR view links: list, create, extend expiration, revoke, and reactivate.
+
+### `shares list`
+
+List shared links with optional status and client filters.
+
+**Syntax:**
+
+```bash
+lgp shares list [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--status <status>` | string | No | `all` | Filter: `active`, `revoked`, `expired`, `all` |
+| `--client <id>` | string | No | — | Filter by client ID |
+| `--limit <n>` | integer | No | `50` | Maximum results |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts shares list --status active
+npx tsx src/scripts/lgp.ts shares list --status expired --format table
+```
+
+### `shares get`
+
+Get details for a specific shared link.
+
+**Syntax:**
+
+```bash
+lgp shares get <id>
+```
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts shares get sv_abc123
+```
+
+### `shares create`
+
+Create a new shared link.
+
+**Syntax:**
+
+```bash
+lgp shares create [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client <id>` | string | No | — | Client ID to scope the shared view |
+| `--view-type <type>` | string | No | `sdr` | View type: `sdr` or `crm` |
+| `--allow-edit` | boolean | No | `false` | Allow recipients to edit lead status/notes |
+| `--days <n>` | integer | No | `7` | Expiration in days (1-365) |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts shares create --view-type crm --days 30 --allow-edit
+npx tsx src/scripts/lgp.ts shares create --client cl_9f3a2b7e --days 14
+```
+
+### `shares extend`
+
+Extend the expiration of an existing shared link.
+
+**Syntax:**
+
+```bash
+lgp shares extend <id> --days <n>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--days <n>` | integer | Yes | — | Additional days to add (1-365) |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts shares extend sv_abc123 --days 30
+```
+
+### `shares set-expiry`
+
+Set an explicit expiration date on a shared link.
+
+**Syntax:**
+
+```bash
+lgp shares set-expiry <id> --date <iso>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--date <iso>` | string | Yes | — | New expiration date (ISO 8601 format) |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts shares set-expiry sv_abc123 --date 2026-06-30T00:00:00.000Z
+```
+
+### `shares revoke`
+
+Revoke (disable) a shared link. The link URL will stop working immediately.
+
+**Syntax:**
+
+```bash
+lgp shares revoke <id>
+```
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts shares revoke sv_abc123
+```
+
+### `shares reactivate`
+
+Re-enable a previously revoked shared link. Optionally extend its expiration.
+
+**Syntax:**
+
+```bash
+lgp shares reactivate <id> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--days <n>` | integer | No | — | Also extend expiration by N days |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts shares reactivate sv_abc123 --days 14
+```

@@ -53,27 +53,24 @@ All API endpoints live under `/api/automation/`.
 
 ## Installation & Setup
 
-> **Note:** This skill package is documentation-only. The `lgp` CLI script (`lgp.py`) is part of the LeadGenius Pro application repository and is **not included** in this package. Obtain the CLI from your LeadGenius Pro deployment (typically at `.agent/skills/leadgenius-api/scripts/lgp.py` in the application workspace).
-
-The CLI is a Python script requiring Python 3.8+ and the `requests` library (`pip install requests`):
+The CLI runs via `npx tsx` (TypeScript execution) — no separate installation required:
 
 ```bash
-python lgp.py <command> [options]
+npx tsx src/scripts/lgp.ts <command> [options]
 ```
 
-### Required Environment Variables
+### Environment Variables
 
-| Variable | Required | Description | Default |
-|----------|----------|-------------|---------|
-| `LGP_API_KEY` | **Yes** | API key with `lgp_` prefix. Created via `POST /api/automation/users/provision`. | — |
-| `LGP_URL` | No | Base URL of the LeadGenius API | `http://localhost:3000` |
-| `LGP_ADMIN_KEY` | No | Admin key to bypass rate limits. Sent as `X-Admin-Key` header alongside `X-API-Key`. Grants elevated access — use only for admin operations. | — |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LGP_API_KEY` | API key with `lgp_` prefix | — (required) |
+| `LGP_ADMIN_KEY` | Admin key for admin commands | — (required for `admin` commands) |
+| `LGP_URL` | Base URL of the LeadGenius API | `http://localhost:3000` |
 
 ```bash
 export LGP_API_KEY="lgp_your_key_here"
+export LGP_ADMIN_KEY="your_admin_key_here"
 export LGP_URL="https://api.leadgenius.app"
-# Optional — only if you need admin-level rate limit bypass:
-# export LGP_ADMIN_KEY="your_admin_key_here"
 ```
 
 ### Global CLI Options
@@ -81,7 +78,7 @@ export LGP_URL="https://api.leadgenius.app"
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--api-key <key>` | `LGP_API_KEY` env | Override API key |
-| `--admin-key <key>` | `LGP_ADMIN_KEY` env | Override admin key (bypasses rate limits) |
+| `--admin-key <key>` | `LGP_ADMIN_KEY` env | Override admin key |
 | `--url <url>` | `LGP_URL` env | Override base URL |
 | `--format <fmt>` | `json` | Output: `json` or `table` |
 
@@ -423,7 +420,7 @@ Note: `/users/info` uses `derivePlan(threadMax, stripeClientId)` (full), while `
 
 ## CLI Command Reference
 
-All commands use the syntax: `python lgp.py <group> <command> [options]`
+All commands use the syntax: `npx tsx src/scripts/lgp.ts <group> <command> [options]`
 
 ### auth
 
@@ -445,6 +442,8 @@ All commands use the syntax: `python lgp.py <group> <command> [options]`
 | `leads validate-ownership` | Scan for ownership issues |
 | `leads activity <leadId> --type <type>` | Log engagement (`--notes`, `--metadata`) |
 | `leads activities <leadId>` | Get engagement history |
+| `leads update-batch --client-id <id> --field <f> --csv <path>` | Batch update leads from CSV |
+| `leads prune-blanks --client-id <id>` | Remove blank leads (`--dry-run`) |
 
 ### tasks
 
@@ -547,6 +546,90 @@ All commands use the syntax: `python lgp.py <group> <command> [options]`
 | `epsimo credits --token <token>` | Credit balance |
 | `epsimo purchase --token <token> --amount <n>` | Purchase credits |
 | `epsimo threads --token <token>` | Thread usage and percentage |
+
+### admin (requires `LGP_ADMIN_KEY`)
+
+| Command | Description |
+|---------|-------------|
+| `admin backup tables [--prefix <p>]` | List DynamoDB tables |
+| `admin backup create --table <name>` or `--all` | Create on-demand backup |
+| `admin backup list [--table <n>] [--status <s>]` | List existing backups |
+| `admin backup describe --arn <arn>` | Describe a backup |
+| `admin backup delete --arn <arn>` | Delete a backup |
+| `admin backup restore --arn <arn> --target-table <n>` | Restore from backup |
+| `admin backup pitr-status [--table <n>]` | Check PITR status |
+| `admin backup pitr-enable --table <name>` | Enable PITR |
+| `admin backup pitr-disable --table <name>` | Disable PITR |
+| `admin org-tree --company <id>` | Display org tree (`--detailed`, `--json`) |
+| `admin companies list` | List all companies |
+| `admin companies show --id <id>` | Show company detail |
+| `admin users list [--search <term>]` | List Cognito users |
+| `admin views list` | List view configurations |
+| `admin clients list` | List all clients across companies |
+
+### maintenance
+
+| Command | Description |
+|---------|-------------|
+| `maintenance bugs list` | List bug reports |
+| `maintenance bugs report --desc <text>` | Report a bug (`--email`) |
+| `maintenance enhancements list` | List enhancement requests |
+| `maintenance enhancements request --desc <text>` | Request enhancement (`--email`) |
+
+### pipeline
+
+| Command | Description |
+|---------|-------------|
+| `pipeline [--start <date>] [--end <date>]` | Show pipeline analytics (defaults to last 30 days) |
+
+### campaigns
+
+| Command | Description |
+|---------|-------------|
+| `campaigns list` | List all campaigns |
+| `campaigns create --name <name> [--type <type>]` | Create campaign (default type: `abm`) |
+
+### clients
+
+| Command | Description |
+|---------|-------------|
+| `clients list` | List all clients |
+| `clients create --name <name> [--url <url>]` | Create a new client |
+
+### generate
+
+| Command | Description |
+|---------|-------------|
+| `generate from-icp --icp <id> --client <id>` | Generate leads from ICP (`--max-leads`, `--provider`) |
+| `generate direct --provider <name> --config <json> --client <id>` | Direct provider generation |
+| `generate status <runId>` | Check generation run status |
+| `generate history` | List past runs (`--client`, `--icp`, `--status`, `--limit`) |
+| `generate schedule create --icp <id> --client <id> --frequency <f>` | Create schedule (`--max-leads`) |
+| `generate schedule list` | List all schedules |
+| `generate schedule pause <scheduleId>` | Pause a schedule |
+| `generate schedule resume <scheduleId>` | Resume a schedule |
+| `generate schedule delete <scheduleId>` | Delete a schedule |
+
+### shares
+
+| Command | Description |
+|---------|-------------|
+| `shares list` | List shared links (`--status`, `--client`) |
+| `shares get <id>` | Get shared link detail |
+| `shares create` | Create shared link (`--view-type`, `--days`, `--allow-edit`) |
+| `shares extend <id> --days <n>` | Extend expiration |
+| `shares set-expiry <id> --date <iso>` | Set explicit expiration |
+| `shares revoke <id>` | Revoke shared link |
+| `shares reactivate <id>` | Re-enable revoked link (`--days`) |
+
+### account-analysis
+
+| Command | Description |
+|---------|-------------|
+| `account-analysis list --client <id>` | List company groups (`--sort`, `--min-leads`) |
+| `account-analysis analyze --client <id>` | Detailed metrics (`--company`) |
+| `account-analysis export --client <id> --format <fmt>` | Export to CSV/JSON (`--output`) |
+| `account-analysis cache-clear` | Clear local cache (`--client`) |
 
 
 ---
@@ -762,4 +845,4 @@ Before running enrichment, copyright, scoring, or FSD pipelines, these configura
 
 ## License
 
-See [LICENSE](LICENSE).
+Proprietary — LeadGenius Pro. All rights reserved.
