@@ -147,6 +147,57 @@ lgp leads get <id>
 npx tsx src/scripts/lgp.ts leads get lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab
 ```
 
+### `leads update`
+
+Update fields on a single lead by ID. Supports all updatable lead fields including the 7 calling fields. Provide updates via a JSON string, individual calling field flags, or both (individual flags take precedence).
+
+**Syntax:**
+
+```bash
+lgp leads update <id> [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `<id>` | string (positional) | Yes | — | Lead ID to update |
+| `--data <json>` | string | No | — | JSON string of field-value pairs to update |
+| `--phone-validity <value>` | string | No | — | Set `phoneValidity`: "Valid", "Wrong Number", "Disconnected" |
+| `--last-call-outcome <value>` | string | No | — | Set `lastCallOutcome`: "Left VM", "No Answer", "Gatekeeper Blocked", "Callback Requested" |
+| `--next-action-date <value>` | string | No | — | Set `nextActionDate` (ISO 8601 datetime) |
+| `--call-feedback <value>` | string | No | — | Set `callFeedbackSummary` (free-text string) |
+| `--persona-fit <value>` | string | No | — | Set `personaFitValidation` (non-empty string) |
+| `--employment-status <value>` | string | No | — | Set `employmentStatus`: "Employed", "Left Company", "Unknown" |
+| `--adjusted-score <value>` | number | No | — | Set `adjustedLeadScore` (finite number) |
+
+At least one of `--data` or an individual field flag must be provided. When both `--data` and individual flags are provided, individual flags take precedence over values in `--data`.
+
+**Example — update calling fields with individual flags:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads update lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
+  --phone-validity "Valid" \
+  --last-call-outcome "Left VM" \
+  --call-feedback "Spoke with assistant, decision maker in meeting" \
+  --next-action-date "2025-01-15T10:00:00Z"
+```
+
+**Example — update via `--data` JSON:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads update lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
+  --data '{"employmentStatus":"Employed","adjustedLeadScore":85,"notes":"Confirmed still at company"}'
+```
+
+**Example — combine `--data` with individual flags (flags win):**
+
+```bash
+npx tsx src/scripts/lgp.ts leads update lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab \
+  --data '{"phoneValidity":"Valid","notes":"Updated after call"}' \
+  --adjusted-score 92
+```
+
 ### `leads import`
 
 Import one or more leads into a client. Provide data via a JSON file or inline JSON string.
