@@ -1,7 +1,7 @@
 {
   "name": "leadgenius-cli-skill",
-  "version": "1.1.0",
-  "description": "AI agent skill for operating the LeadGenius Pro Automation API and lgp CLI. Covers ICP management, FSD pipeline automation, lead generation/enrichment/scoring, user provisioning, territory analysis, webhook management, and email platform integration.",
+  "version": "1.2.0",
+  "description": "AI agent skill for operating the LeadGenius Pro Automation API and lgp CLI. Covers ICP management, FSD pipeline automation, lead generation/enrichment/scoring, user provisioning, territory analysis, webhook management, email platform integration, soft-delete lifecycle, and import integrity.",
   "keywords": [
     "ai-skill",
     "agent-skill",

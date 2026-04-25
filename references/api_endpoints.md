@@ -104,6 +104,7 @@ List EnrichLeads by `client_id`, sorted by `createdAt` descending. Supports fiel
 | `fields` | string | No | default set | Comma-separated field names to return |
 | `limit` | integer | No | 50 | Max records (capped at 500) |
 | `nextToken` | string | No | — | Pagination token from previous response |
+| `includeDeleted` | boolean | No | `false` | When `true`, include soft-deleted leads (`status: "to_be_deleted"`) in the listing |
 
 **Default fields returned:** `id`, `firstName`, `lastName`, `fullName`, `email`, `linkedinUrl`, `companyName`, `title`, `status`, `client_id`, `company_id`, `createdAt`, `updatedAt`.
 
@@ -429,9 +430,37 @@ Any additional EnrichLead fields can be included. Unknown fields are silently st
 |-------|------|----------|---------|-------------|
 | `leads` | array | Yes | — | Array of lead objects (max 500). Each object uses the same fields as single-lead import. |
 
+**Additional Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `strictMode` | boolean | No | `false` | When `true`, rejects import if a duplicate is found (409 Conflict). For batch imports, rejects the entire batch if any duplicate is detected. |
+| `verificationLevels` | object | No | all `true` | Configure which identity verification levels to use: `{email: bool, linkedinUrl: bool, companyFullName: bool}`. All default to `true`. |
+
+**Request Headers:**
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | API key for authentication |
+| `X-Idempotency-Key` | No | Optional. Same key within 24 hours returns the cached response instead of re-importing. |
+
 **Key behaviors:**
-- Cross-client duplicate detection by `email` / `linkedinUrl` (warning only, not blocking)
+- Cross-client duplicate detection by `email` / `linkedinUrl` (warning only in default mode, blocking in `strictMode`)
 - Max batch size: 500 leads
+- Identity verification via `email`, `linkedinUrl`, and `companyFullName` fields (configurable via `verificationLevels`)
+- In default mode (non-strict), duplicates are upserted (existing record updated)
+- In `strictMode`, duplicates cause a 409 rejection; for batch imports, the entire batch is rejected if any lead matches
+
+**Error Codes:**
+
+| Code | HTTP | Description |
+|------|------|-------------|
+| `DUPLICATE_DETECTED` | 409 | Single lead duplicate found (strictMode) |
+| `BATCH_DUPLICATE_DETECTED` | 409 | Batch rejected due to duplicate at a specific index (strictMode) |
+| `DEDUP_FAILED` | 503 | Deduplication check failed (service error) |
+| `DEDUP_TIMEOUT` | 503 | Deduplication check timed out |
+| `INVALID_CONFIG` | 400 | Invalid configuration (e.g., strictMode with all verification levels disabled) |
+| `BATCH_TOO_LARGE` | 400 | Batch exceeds maximum of 500 leads |
 
 **Response:**
 
@@ -863,6 +892,166 @@ curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
 
 ```bash
 npx tsx src/scripts/lgp.ts leads validate-ownership
+```
+
+---
+
+### `DELETE /api/automation/leads/{id}`
+
+Soft-delete a lead. Sets `status: "to_be_deleted"`, records `deletedAt` and `deletedBy`. The lead is not permanently removed — use `POST /api/automation/leads/purge` for permanent deletion, or `POST /api/automation/leads/{id}/restore` to undo.
+
+**Path Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | EnrichLead record ID |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "lead-001",
+    "status": "to_be_deleted",
+    "deletedAt": "2026-03-20T14:30:00.000Z",
+    "deletedBy": "owner-sub-789"
+  },
+  "requestId": "req-abc123"
+}
+```
+
+**Error Responses:**
+
+| Status | Code | When |
+|--------|------|------|
+| 404 | `NOT_FOUND` | Lead ID does not exist or belongs to a different company |
+
+**curl:**
+
+```bash
+curl -s -X DELETE -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/leads/LEAD_ID" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads delete LEAD_ID
+```
+
+---
+
+### `POST /api/automation/leads/{id}/restore`
+
+Restore a soft-deleted lead. Clears the `to_be_deleted` status, `deletedAt`, and `deletedBy` fields, returning the lead to `active` status.
+
+**Path Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | EnrichLead record ID |
+
+**Request Body:** Empty `{}` or omit body.
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "lead-001",
+    "status": "active",
+    "restoredAt": "2026-03-21T09:00:00.000Z"
+  },
+  "requestId": "req-abc123"
+}
+```
+
+**Error Responses:**
+
+| Status | Code | When |
+|--------|------|------|
+| 400 | `NOT_DELETED` | Lead is not in soft-deleted state |
+| 404 | `NOT_FOUND` | Lead ID does not exist or belongs to a different company |
+
+**curl:**
+
+```bash
+curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
+  "https://api.leadgenius.app/api/automation/leads/LEAD_ID/restore" | jq
+```
+
+**CLI equivalent:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads restore LEAD_ID
+```
+
+---
+
+### `POST /api/automation/leads/purge`
+
+Permanently delete soft-deleted leads. Admin-only — requires `X-Admin-Key` header. Accepts optional filters to narrow which soft-deleted leads are purged.
+
+**Request Headers:**
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | API key for authentication |
+| `X-Admin-Key` | Yes | Admin key (required for this endpoint) |
+
+**Request Body (all fields optional):**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `olderThan` | string | No | — | ISO 8601 datetime — only purge leads deleted before this date |
+| `client_id` | string | No | — | Only purge leads belonging to this client |
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "purgedCount": 15,
+    "errors": []
+  },
+  "message": "Purged 15 leads"
+}
+```
+
+**Error Responses:**
+
+| Status | Code | When |
+|--------|------|------|
+| 400 | `INVALID_PARAMETER` | `olderThan` is not a valid ISO 8601 datetime, or `client_id` is not a string |
+| 403 | `ADMIN_REQUIRED` | Missing or invalid `X-Admin-Key` header |
+
+**curl:**
+
+```bash
+# Purge all soft-deleted leads
+curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
+  -H "X-Admin-Key: $LGP_ADMIN_KEY" \
+  https://api.leadgenius.app/api/automation/leads/purge | jq
+
+# Purge with filters
+curl -s -X POST -H "X-API-Key: $LGP_API_KEY" \
+  -H "X-Admin-Key: $LGP_ADMIN_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"olderThan":"2026-01-01T00:00:00.000Z","client_id":"client-123"}' \
+  https://api.leadgenius.app/api/automation/leads/purge | jq
+```
+
+**CLI equivalent:**
+
+```bash
+# Purge all soft-deleted leads (requires LGP_ADMIN_KEY)
+npx tsx src/scripts/lgp.ts leads purge
+
+# Purge with filters
+npx tsx src/scripts/lgp.ts leads purge --client client-123 --older-than "2026-01-01T00:00:00.000Z"
 ```
 
 

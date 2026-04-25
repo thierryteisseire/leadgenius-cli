@@ -484,6 +484,81 @@ npx tsx src/scripts/lgp.ts leads prune-blanks --client-id cl_9f3a2b7e --dry-run
 npx tsx src/scripts/lgp.ts leads prune-blanks --client-id cl_9f3a2b7e
 ```
 
+### `leads delete`
+
+Soft-delete a lead. Sets the lead's status to `to_be_deleted` with a deletion timestamp and owner. The lead is not permanently removed — use `leads restore` to undo, or `leads purge` for permanent deletion.
+
+**Syntax:**
+
+```bash
+lgp leads delete <id>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `<id>` | string (positional) | Yes | — | Lead ID to soft-delete |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads delete lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab
+```
+
+### `leads restore`
+
+Restore a soft-deleted lead. Clears the `to_be_deleted` status and returns the lead to `active`.
+
+**Syntax:**
+
+```bash
+lgp leads restore <id>
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `<id>` | string (positional) | Yes | — | Lead ID to restore |
+
+**Example:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads restore lead_5c8d1e2f-a3b4-4567-89ef-0123456789ab
+```
+
+### `leads purge`
+
+Permanently delete soft-deleted leads. Admin-only — requires `LGP_ADMIN_KEY` environment variable or `--admin-key` flag.
+
+**Syntax:**
+
+```bash
+lgp leads purge [options]
+```
+
+**Flags:**
+
+| Flag | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `--client <id>` | string | No | — | Only purge leads from this client |
+| `--older-than <datetime>` | string | No | — | Only purge leads deleted before this ISO 8601 datetime |
+
+**Example — purge all soft-deleted leads:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads purge
+```
+
+**Example — purge with filters:**
+
+```bash
+npx tsx src/scripts/lgp.ts leads purge \
+  --client cl_9f3a2b7e \
+  --older-than "2026-01-01T00:00:00.000Z"
+```
+
 ---
 
 ## tasks
