@@ -1,6 +1,6 @@
 {
   "name": "leadgenius-cli",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "LeadGenius Pro CLI — B2B lead management, enrichment, scoring, and automation",
   "main": "dist/cli/index.js",
   "types": "dist/cli/index.d.ts",

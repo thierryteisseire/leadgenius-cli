@@ -31,8 +31,10 @@ export async function menuPassword(message: string): Promise<string> {
   return password({ message });
 }
 
+import { smartFormat } from '../smart-fmt.js';
+
 export function printJson(data: any) {
-  console.log(JSON.stringify(data, null, 2));
+  smartFormat(data);
 }
 
 export async function pause() {

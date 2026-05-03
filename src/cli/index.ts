@@ -31,10 +31,14 @@ export function getClient(): ApiClient {
   });
 }
 
+import { smartFormat } from './smart-fmt.js';
+
 export function formatOutput(data: any) {
-  const opts = program.opts();
-  if (opts.format === 'table') return;
-  console.log(JSON.stringify(data, null, 2));
+  if (process.argv.includes('--format') && program.opts().format === 'json') {
+    console.log(JSON.stringify(data, null, 2));
+  } else {
+    smartFormat(data);
+  }
 }
 
 import { registerAuthCommands } from './commands/auth.js';
