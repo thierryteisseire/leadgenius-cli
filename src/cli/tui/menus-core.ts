@@ -34,14 +34,20 @@ export async function leadsMenu() {
         const id = await menuInput('Lead ID:');
         printJson(await c.get(`/leads/${id}`));
       } else if (action === 'search') {
-        const email = await menuInput('Email (or blank):');
+        const query = await menuInput('Search (email, name, URL):');
+        if (!query) continue;
         const params = new URLSearchParams();
-        if (email) params.append('email', email);
-        else {
-          const fn = await menuInput('First name (or blank):');
-          const ln = await menuInput('Last name (or blank):');
-          if (fn) params.append('firstName', fn);
-          if (ln) params.append('lastName', ln);
+        const q = query.trim();
+        if (q.includes('@')) {
+          params.append('email', q);
+        } else if (q.startsWith('http') || q.includes('.com') || q.includes('.io') || q.includes('.fr')) {
+          if (q.includes('linkedin')) params.append('linkedinUrl', q);
+          else params.append('companyUrl', q);
+        } else {
+          // Name search: split into first/last
+          const parts = q.split(/\s+/);
+          params.append('firstName', parts[0]);
+          if (parts.length > 1) params.append('lastName', parts.slice(1).join(' '));
         }
         printJson(await c.get(`/leads/search?${params}`));
       } else if (action === 'import') {
