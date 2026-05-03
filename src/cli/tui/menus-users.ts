@@ -1,5 +1,6 @@
 import { getTuiClient, menuSelect, menuInput, menuPassword, menuConfirm, printJson, pause, BACK, backChoice, cognitoAuth, epsimoExchange } from './engine.js';
 import { formatEpsimo as fmtEpsimo } from '../epsimo-fmt.js';
+import { saveSession, getSessionValue } from '../session.js';
 
 export async function usersMenu() {
   while (true) {
@@ -134,7 +135,7 @@ export async function cognitoMenu() {
 
 export async function epsimoMenu() {
   const c = getTuiClient();
-  let epsimoToken: string | null = null;
+  let epsimoToken: string | null = getSessionValue('epsimoToken') || null;
 
   // Auto-authenticate on first entry
   async function ensureToken(): Promise<string | null> {
@@ -155,6 +156,7 @@ export async function epsimoMenu() {
       const token = await epsimoExchange(cognito.idToken);
       if (token) {
         epsimoToken = token;
+        saveSession({ epsimoToken: token, cognitoEmail: email });
         console.log('✓ EpsimoAI token obtained\n');
         return epsimoToken;
       }
