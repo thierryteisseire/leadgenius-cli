@@ -1,0 +1,160 @@
+import { Command } from 'commander';
+import { getClient, formatOutput } from '../index.js';
+import { renderTable } from '../utils.js';
+import { readFileSync } from 'fs';
+
+export function registerLeadsCommands(program: Command) {
+  const leads = program.command('leads').description('Lead management commands');
+
+  leads
+    .command('list')
+    .description('List leads for a specific client')
+    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-l, --limit <n>', 'Maximum records', '50')
+    .option('-t, --next-token <token>', 'Pagination token')
+    .option('-f, --fields <fields>', 'Comma-separated fields')
+    .action(async (options) => {
+      const client = getClient();
+      const params = new URLSearchParams({ client_id: options.client, limit: options.limit });
+      if (options.nextToken) params.append('nextToken', options.nextToken);
+      if (options.fields) params.append('fields', options.fields);
+      const response = await client.get(`/leads?${params}`);
+      const programOpts = program.opts();
+      if (programOpts.format === 'table' && response.success && Array.isArray(response.data)) {
+        renderTable(
+          ['ID', 'First Name', 'Last Name', 'Email', 'Company', 'Score'],
+          response.data.map((l: any) => [l.id||'', l.firstName||'', l.lastName||'', l.email||'', l.companyName||'', l.aiLeadScore||''])
+        );
+      } else {
+        formatOutput(response);
+      }
+    });
+
+  leads.command('get <id>').description('Retrieve lead detail').action(async (id) => {
+    formatOutput(await getClient().get(`/leads/${id}`));
+  });
+
+  leads
+    .command('import')
+    .description('Import leads (single or batch)')
+    .option('--file <path>', 'JSON file path')
+    .option('--data <json>', 'Inline JSON data')
+    .action(async (options) => {
+      let body: any;
+      if (options.file) {
+        try { body = JSON.parse(readFileSync(options.file, 'utf-8')); } catch (e: any) { console.error('Error reading file: ' + e.message); return; }
+      } else if (options.data) {
+        try { body = JSON.parse(options.data); } catch (e: any) { console.error('Error: Invalid JSON. ' + e.message); return; }
+      } else { console.error('Error: --file or --data required.'); return; }
+      formatOutput(await getClient().post('/leads/import', body));
+    });
+
+  leads
+    .command('search')
+    .description('Search leads')
+    .option('--email <email>')
+    .option('--first-name <name>')
+    .option('--last-name <name>')
+    .option('--company-url <url>')
+    .option('--linkedin-url <url>')
+    .option('--client <id>')
+    .action(async (options) => {
+      const params = new URLSearchParams();
+      if (options.email) params.append('email', options.email);
+      if (options.firstName) params.append('firstName', options.firstName);
+      if (options.lastName) params.append('lastName', options.lastName);
+      if (options.companyUrl) params.append('companyUrl', options.companyUrl);
+      if (options.linkedinUrl) params.append('linkedinUrl', options.linkedinUrl);
+      if (options.client) params.append('client_id', options.client);
+      formatOutput(await getClient().get(`/leads/search?${params}`));
+    });
+
+  leads
+    .command('dedup')
+    .description('Find duplicate groups')
+    .requiredOption('-c, --client <id>', 'Client ID')
+    .requiredOption('-m, --match <fields>', 'Match fields (comma-separated)')
+    .action(async (options) => {
+      formatOutput(await getClient().post('/leads/deduplicate', {
+        client_id: options.client,
+        matchFields: options.match.split(',')
+      }));
+    });
+
+  leads
+    .command('dedup-resolve')
+    .description('Merge duplicates into keep lead')
+    .requiredOption('--keep <id>', 'Lead ID to keep')
+    .requiredOption('--merge <ids>', 'Comma-separated lead IDs to merge')
+    .action(async (options) => {
+      formatOutput(await getClient().post('/leads/deduplicate/resolve', {
+        keepLeadId: options.keep,
+        mergeLeadIds: options.merge.split(',')
+      }));
+    });
+
+  leads
+    .command('transfer')
+    .description('Transfer leads between clients')
+    .requiredOption('--from <id>', 'Source client ID')
+    .requiredOption('--to <id>', 'Target client ID')
+    .option('--all', 'Transfer all leads', false)
+    .option('--dry-run', 'Preview only', false)
+    .action(async (options) => {
+      formatOutput(await getClient().post('/leads/transfer', {
+        fromClientId: options.from,
+        toClientId: options.to,
+        all: options.all,
+        dryRun: options.dryRun
+      }));
+    });
+
+  leads
+    .command('activity <leadId>')
+    .description('Log engagement activity')
+    .requiredOption('-t, --type <type>', 'Activity type')
+    .option('--notes <text>', 'Activity notes')
+    .option('--metadata <json>', 'JSON metadata')
+    .action(async (leadId, options) => {
+      const body: any = { type: options.type };
+      if (options.notes) body.notes = options.notes;
+      if (options.metadata) { try { body.metadata = JSON.parse(options.metadata); } catch { console.error('Error: Invalid JSON metadata.'); return; } }
+      formatOutput(await getClient().post(`/leads/${leadId}/activities`, body));
+    });
+
+  leads.command('activities <leadId>').description('Get engagement history').action(async (leadId) => {
+    formatOutput(await getClient().get(`/leads/${leadId}/activities`));
+  });
+
+  leads.command('validate-ownership').description('Scan for ownership issues').action(async () => {
+    formatOutput(await getClient().post('/leads/validate-ownership'));
+  });
+
+  leads
+    .command('update-batch')
+    .description('Batch update leads from CSV')
+    .requiredOption('--client-id <id>', 'Client ID')
+    .requiredOption('--field <f>', 'Field to update')
+    .requiredOption('--csv <path>', 'CSV file path')
+    .action(async (options) => {
+      let csvData: string;
+      try { csvData = readFileSync(options.csv, 'utf-8'); } catch (e: any) { console.error('Error reading CSV: ' + e.message); return; }
+      formatOutput(await getClient().post('/leads/update-batch', {
+        client_id: options.clientId,
+        field: options.field,
+        csvData
+      }));
+    });
+
+  leads
+    .command('prune-blanks')
+    .description('Remove blank leads')
+    .requiredOption('--client-id <id>', 'Client ID')
+    .option('--dry-run', 'Preview only', false)
+    .action(async (options) => {
+      formatOutput(await getClient().post('/leads/prune-blanks', {
+        client_id: options.clientId,
+        dryRun: options.dryRun
+      }));
+    });
+}

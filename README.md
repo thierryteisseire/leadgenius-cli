@@ -36,13 +36,7 @@ LeadGenius Pro is a B2B lead management and enrichment platform. The Automation 
 The platform pipeline:
 
 ```
-Source Leads → Import → Enrich → Score → Qualify → Deliver to Email Platform
-```
-
-The FSD (Full-Stack Demand) pipeline automates this end-to-end:
-
-```
-ICP Definition → Apify Lead Generation → Enrichment → SDR AI Scoring → Qualification → Email Delivery
+Source Leads → Import → Enrichment → AI Scoring → Qualification → Email Delivery
 ```
 
 **Base URL:** `https://api.leadgenius.app`
@@ -52,6 +46,8 @@ All API endpoints live under `/api/automation/`.
 ---
 
 ## Installation & Setup
+
+> **Note:** This skill package is documentation-only. The `lgp` CLI script (`lgp.ts`) is part of the LeadGenius Pro application repository and is **not included** in this package. Obtain the CLI from your LeadGenius Pro deployment (typically at `src/scripts/lgp.ts` in the application workspace).
 
 The CLI runs via `npx tsx` (TypeScript execution) — no separate installation required:
 
@@ -845,4 +841,4 @@ Before running enrichment, copyright, scoring, or FSD pipelines, these configura
 
 ## License
 
-Proprietary — LeadGenius Pro. All rights reserved.
+See [LICENSE](LICENSE).

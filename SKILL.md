@@ -7,6 +7,8 @@ description: Comprehensive skill for operating the LeadGenius Pro Automation API
 
 This skill teaches AI agents how to operate the **LeadGenius Pro Automation API** and the **`lgp` CLI tool**. It covers the full lifecycle of B2B lead management — from ICP (Ideal Customer Profile) definition and automated lead generation through enrichment, scoring, qualification, and email delivery via the FSD (Full-Stack Demand) pipeline.
 
+> **Note:** This skill package is documentation-only. The `lgp` CLI script (`lgp.ts`) is part of the LeadGenius Pro application repository and is **not included** in this package. Obtain the CLI from your LeadGenius Pro deployment.
+
 ## Base URL
 
 ```
@@ -27,6 +29,14 @@ X-API-Key: lgp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - The key determines `company_id`, `owner` identity, and rate limits.
 - Keys are created via `POST /api/automation/users/provision` — the plain-text key is returned only once at creation time.
 - Test your key with `GET /api/automation/auth/test`.
+
+### Required Environment Variables
+
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `LGP_API_KEY` | **Yes** | API key with `lgp_` prefix. Required for all API and CLI operations. | — |
+| `LGP_URL` | No | Base URL of the LeadGenius Pro API. | `http://localhost:3000` |
+| `LGP_ADMIN_KEY` | No | Admin key to bypass rate limits. Sent as `X-Admin-Key` header alongside `X-API-Key`. Grants elevated access — use only for admin operations. | — |
 
 ### Rate Limits
 
@@ -98,51 +108,38 @@ Before running enrichment, copyright, scoring, or FSD pipelines, the following c
 | `seniority`       | JSON array of seniority levels                   |
 | `client_id`       | Client partition for data isolation              |
 
-### Client (required for data isolation)
-
-| Field         | Description                          |
-|---------------|--------------------------------------|
-| `clientName`  | Display name for the client          |
-| `companyURL`  | Company website URL                  |
-| `description` | Client description                   |
-
-### EmailPlatformSettings (required for email delivery)
-
-| Field        | Description                              |
-|--------------|------------------------------------------|
-| `platform`   | Email platform name (e.g., "woodpecker") |
-| `apiKey`     | Platform API key                         |
-| `campaignId` | Default campaign ID on the platform      |
-
 ---
 
 ## Quick-Reference: Endpoint Map
 
-| API Section         | Reference                                                        |
-|---------------------|------------------------------------------------------------------|
-| Auth                | [references/api_endpoints.md#authentication](references/api_endpoints.md#authentication) |
+| Category            | Reference Section                                    |
+|---------------------|------------------------------------------------------|
+| Auth                | [references/api_endpoints.md#auth](references/api_endpoints.md#auth) |
 | Leads               | [references/api_endpoints.md#leads](references/api_endpoints.md#leads) |
-| Tasks               | [references/api_endpoints.md#tasks](references/api_endpoints.md#tasks) |
-| Lead Generation     | [references/api_endpoints.md#lead-generation](references/api_endpoints.md#lead-generation) |
-| Territory           | [references/api_endpoints.md#territory-companies](references/api_endpoints.md#territory-companies) |
-| Webhooks            | [references/api_endpoints.md#webhook-events](references/api_endpoints.md#webhook-events) |
+| Tasks               | [references/api_endpoints.md#tasks-background-processing](references/api_endpoints.md#tasks-background-processing) |
+| Territory Companies | [references/api_endpoints.md#territory-companies](references/api_endpoints.md#territory-companies) |
+| Webhook Events      | [references/api_endpoints.md#webhook-events](references/api_endpoints.md#webhook-events) |
 | Users               | [references/api_endpoints.md#users](references/api_endpoints.md#users) |
 | Organizations       | [references/api_endpoints.md#organizations](references/api_endpoints.md#organizations) |
+| Cognito             | [references/api_endpoints.md#cognito-user-pool](references/api_endpoints.md#cognito-user-pool) |
 | Tables / ICP        | [references/api_endpoints.md#tables-generic-crud-with-icp-focus](references/api_endpoints.md#tables-generic-crud-with-icp-focus) |
 | Email Platforms     | [references/api_endpoints.md#email-platforms](references/api_endpoints.md#email-platforms) |
 | FSD Pipeline        | [references/api_endpoints.md#fsd-pipeline](references/api_endpoints.md#fsd-pipeline) |
+| Job Ad Lead Triggering | [references/api_endpoints.md#job-ad-lead-triggering](references/api_endpoints.md#job-ad-lead-triggering) |
+| Lead Notifications (Unipile) | [references/api_endpoints.md#lead-notifications-unipile](references/api_endpoints.md#lead-notifications-unipile) |
+| EpsimoAI            | [references/api_endpoints.md#epsimoai-user--credit-management](references/api_endpoints.md#epsimoai-user--credit-management) |
+| Account-Based Lead Analysis | [references/api_endpoints.md#account-based-lead-analysis](references/api_endpoints.md#account-based-lead-analysis) |
 | Error Codes         | [references/api_endpoints.md#error-codes](references/api_endpoints.md#error-codes) |
 
 ## Quick-Reference: CLI Map
 
-The `lgp` CLI is the sole command-line tool for LeadGenius Pro. Run via `npx tsx src/scripts/lgp.ts <command>`.
+The `lgp` CLI is the recommended interface. Run via `npx tsx src/scripts/lgp.ts <command>`.
 
-| Command Group      | Reference                                                          |
-|--------------------|--------------------------------------------------------------------|
+| Group              | Reference Section                                    |
+|--------------------|------------------------------------------------------|
 | `auth`             | [references/cli_reference.md#auth](references/cli_reference.md#auth) |
 | `leads`            | [references/cli_reference.md#leads](references/cli_reference.md#leads) |
 | `tasks`            | [references/cli_reference.md#tasks](references/cli_reference.md#tasks) |
-| `generate`         | [references/cli_reference.md#generate](references/cli_reference.md#generate) |
 | `companies`        | [references/cli_reference.md#companies](references/cli_reference.md#companies) |
 | `webhooks`         | [references/cli_reference.md#webhooks](references/cli_reference.md#webhooks) |
 | `tables`           | [references/cli_reference.md#tables](references/cli_reference.md#tables) |
@@ -151,40 +148,9 @@ The `lgp` CLI is the sole command-line tool for LeadGenius Pro. Run via `npx tsx
 | `cognito`          | [references/cli_reference.md#cognito](references/cli_reference.md#cognito) |
 | `org`              | [references/cli_reference.md#org](references/cli_reference.md#org) |
 | `fsd`              | [references/cli_reference.md#fsd](references/cli_reference.md#fsd) |
-| `admin`            | [references/cli_reference.md#admin](references/cli_reference.md#admin) |
-| `admin backup`     | [references/cli_reference.md#admin-backup-tables](references/cli_reference.md#admin-backup-tables) |
-| `admin org-tree`   | [references/cli_reference.md#admin-org-tree](references/cli_reference.md#admin-org-tree) |
-| `maintenance`      | [references/cli_reference.md#maintenance](references/cli_reference.md#maintenance) |
-| `pipeline`         | [references/cli_reference.md#pipeline](references/cli_reference.md#pipeline) |
-| `campaigns`        | [references/cli_reference.md#campaigns](references/cli_reference.md#campaigns) |
-| `clients`          | [references/cli_reference.md#clients](references/cli_reference.md#clients) |
-| `account-analysis` | [references/cli_reference.md#account-analysis](references/cli_reference.md#account-analysis) |
-| `shares`           | [references/cli_reference.md#shares](references/cli_reference.md#shares) |
 | `epsimo`           | [references/cli_reference.md#epsimoai-commands](references/cli_reference.md#epsimoai-commands) |
-
----
-
-## Maintenance
-
-Maintenance bugs and enhancements are managed through the `lgp` TypeScript CLI:
-
-```bash
-# List bugs
-npx tsx src/scripts/lgp.ts maintenance bugs list
-
-# Report a bug
-npx tsx src/scripts/lgp.ts maintenance bugs report --desc "Login fails on mobile"
-
-# List enhancements
-npx tsx src/scripts/lgp.ts maintenance enhancements list
-
-# Request an enhancement
-npx tsx src/scripts/lgp.ts maintenance enhancements request --desc "Add bulk export feature"
-```
-
-See [references/cli_reference.md#maintenance](references/cli_reference.md#maintenance) for full documentation.
-
-> **Note:** Legacy standalone Node.js scripts (`scripts/create-maintenance-item.js`, `scripts/list-maintenance-items.js`, `scripts/update-maintenance-item.js`) still exist but the `lgp` CLI is the recommended interface.
+| `admin`            | [references/cli_reference.md#admin](references/cli_reference.md#admin) |
+| `account-analysis` | [references/cli_reference.md#account-analysis](references/cli_reference.md#account-analysis) |
 
 ---
 

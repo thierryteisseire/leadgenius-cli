@@ -6,6 +6,8 @@ The `lgp` CLI is a thin HTTP client wrapping the Automation API. All business lo
 
 ## Installation & Setup
 
+> **Note:** This skill package is documentation-only. The `lgp` CLI script (`lgp.ts`) is part of the LeadGenius Pro application repository and is **not included** in this package. Obtain the CLI from your LeadGenius Pro deployment (typically at `src/scripts/lgp.ts` in the application workspace).
+
 No separate installation is required. The CLI runs via `npx tsx`:
 
 ```bash
