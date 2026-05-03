@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { getClient, formatOutput } from '../index.js';
+import { resolveClient } from '../client-picker.js';
 
 export function registerFsdCommands(program: Command) {
   const fsd = program.command('fsd').description('FSD Pipeline commands');
@@ -15,14 +16,17 @@ export function registerFsdCommands(program: Command) {
   fsd
     .command('create-campaign')
     .description('Create FSD campaign')
-    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted)')
     .requiredOption('-n, --name <name>', 'Campaign name')
     .option('--icp <id>', 'ICP ID')
     .option('--frequency <f>', 'Frequency: once|daily|weekly|monthly', 'once')
     .option('--target <n>', 'Target lead count', '100')
     .action(async (options) => {
-      formatOutput(await getClient().post('/fsd/campaigns', {
-        client_id: options.client,
+      const c = getClient();
+      const clientId = await resolveClient(c, options.client);
+      if (!clientId) return;
+      formatOutput(await c.post('/fsd/campaigns', {
+        client_id: clientId,
         name: options.name,
         icpId: options.icp,
         frequency: options.frequency,
@@ -51,7 +55,7 @@ export function registerFsdCommands(program: Command) {
   fsd
     .command('run')
     .description('Start pipeline run')
-    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted)')
     .option('--icp <id>', 'ICP ID')
     .option('--actor <id>', 'Apify actor ID')
     .option('--input <json>', 'Apify input JSON')
@@ -59,8 +63,11 @@ export function registerFsdCommands(program: Command) {
     .option('--enrich', 'Auto-enrich', false)
     .option('--score', 'Auto-score', false)
     .action(async (options) => {
+      const c = getClient();
+      const clientId = await resolveClient(c, options.client);
+      if (!clientId) return;
       const body: any = {
-        client_id: options.client,
+        client_id: clientId,
         targetLeadCount: parseInt(options.target),
         enrichAfterGeneration: options.enrich,
         scoreAfterEnrichment: options.score
@@ -68,7 +75,7 @@ export function registerFsdCommands(program: Command) {
       if (options.icp) body.icpId = options.icp;
       if (options.actor) body.apifyActorId = options.actor;
       if (options.input) { try { body.apifyInput = JSON.parse(options.input); } catch { console.error('Error: Invalid JSON for --input.'); return; } }
-      formatOutput(await getClient().post('/fsd/run', body));
+      formatOutput(await c.post('/fsd/run', body));
     });
 
   fsd.command('status <pipelineId>').description('Get pipeline status').action(async (id) => {

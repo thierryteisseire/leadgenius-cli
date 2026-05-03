@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { getClient, formatOutput } from '../index.js';
+import { resolveClient } from '../client-picker.js';
 
 export function registerGenerateCommands(program: Command) {
   const generate = program.command('generate').description('Lead generation commands');
@@ -8,13 +9,15 @@ export function registerGenerateCommands(program: Command) {
     .command('from-icp')
     .description('Generate leads from ICP')
     .requiredOption('--icp <id>', 'ICP ID')
-    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted)')
     .option('--max-leads <n>', 'Maximum leads', '100')
     .option('--provider <name>', 'Provider name')
     .action(async (options) => {
-      formatOutput(await getClient().post('/generate/from-icp', {
-        icpId: options.icp, client_id: options.client,
-        maxLeads: parseInt(options.maxLeads), provider: options.provider
+      const c = getClient();
+      const clientId = await resolveClient(c, options.client);
+      if (!clientId) return;
+      formatOutput(await c.post('/generate/from-icp', {
+        icpId: options.icp, client_id: clientId, maxLeads: parseInt(options.maxLeads), provider: options.provider
       }));
     });
 
@@ -23,13 +26,14 @@ export function registerGenerateCommands(program: Command) {
     .description('Direct provider generation')
     .requiredOption('--provider <name>', 'Provider name')
     .requiredOption('--config <json>', 'Provider config JSON')
-    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted)')
     .action(async (options) => {
+      const c = getClient();
+      const clientId = await resolveClient(c, options.client);
+      if (!clientId) return;
       let config: any;
       try { config = JSON.parse(options.config); } catch { console.error('Error: Invalid JSON config.'); return; }
-      formatOutput(await getClient().post('/generate/direct', {
-        provider: options.provider, config, client_id: options.client
-      }));
+      formatOutput(await c.post('/generate/direct', { provider: options.provider, config, client_id: clientId }));
     });
 
   generate.command('status <runId>').description('Check generation run status').action(async (runId) => {
@@ -58,13 +62,15 @@ export function registerGenerateCommands(program: Command) {
     .command('create')
     .description('Create schedule')
     .requiredOption('--icp <id>', 'ICP ID')
-    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted)')
     .requiredOption('--frequency <f>', 'Frequency: daily|weekly|monthly')
     .option('--max-leads <n>', 'Maximum leads per run', '100')
     .action(async (options) => {
-      formatOutput(await getClient().post('/generate/schedules', {
-        icpId: options.icp, client_id: options.client,
-        frequency: options.frequency, maxLeads: parseInt(options.maxLeads)
+      const c = getClient();
+      const clientId = await resolveClient(c, options.client);
+      if (!clientId) return;
+      formatOutput(await c.post('/generate/schedules', {
+        icpId: options.icp, client_id: clientId, frequency: options.frequency, maxLeads: parseInt(options.maxLeads)
       }));
     });
 

@@ -1,4 +1,5 @@
 import { getTuiClient, menuSelect, menuInput, menuConfirm, printJson, pause, BACK, backChoice } from './engine.js';
+import { pickClient } from '../client-picker.js';
 
 export async function authMenu() {
   printJson(await getTuiClient().get('/auth/test'));
@@ -25,7 +26,8 @@ export async function leadsMenu() {
     const c = getTuiClient();
     try {
       if (action === 'list') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c);
+        if (!clientId) continue;
         const limit = await menuInput('Limit:', '50');
         printJson(await c.get(`/leads?client_id=${clientId}&limit=${limit}`));
       } else if (action === 'get') {
@@ -46,7 +48,8 @@ export async function leadsMenu() {
         const data = await menuInput('JSON data (array or object):');
         try { printJson(await c.post('/leads/import', JSON.parse(data))); } catch { console.log('Invalid JSON.'); }
       } else if (action === 'dedup') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c);
+        if (!clientId) continue;
         const match = await menuInput('Match fields (comma-sep):', 'email');
         printJson(await c.post('/leads/deduplicate', { client_id: clientId, matchFields: match.split(',') }));
       } else if (action === 'dedup-resolve') {
@@ -54,8 +57,10 @@ export async function leadsMenu() {
         const merge = await menuInput('Merge lead IDs (comma-sep):');
         printJson(await c.post('/leads/deduplicate/resolve', { keepLeadId: keep, mergeLeadIds: merge.split(',') }));
       } else if (action === 'transfer') {
-        const from = await menuInput('From client ID:');
-        const to = await menuInput('To client ID:');
+        const from = await pickClient(c, 'From client');
+        if (!from) continue;
+        const to = await pickClient(c, 'To client');
+        if (!to) continue;
         const dry = await menuConfirm('Dry run?', true);
         printJson(await c.post('/leads/transfer', { fromClientId: from, toClientId: to, all: true, dryRun: dry }));
       } else if (action === 'activity') {
@@ -71,7 +76,8 @@ export async function leadsMenu() {
       } else if (action === 'validate') {
         printJson(await c.post('/leads/validate-ownership'));
       } else if (action === 'prune') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c);
+        if (!clientId) continue;
         const dry = await menuConfirm('Dry run?', true);
         printJson(await c.post('/leads/prune-blanks', { client_id: clientId, dryRun: dry }));
       }

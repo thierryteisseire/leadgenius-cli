@@ -1,4 +1,5 @@
 import { getTuiClient, menuSelect, menuInput, menuConfirm, printJson, pause, BACK, backChoice } from './engine.js';
+import { pickClient } from '../client-picker.js';
 
 export async function adminMenu() {
   while (true) {
@@ -67,19 +68,19 @@ export async function generateMenu() {
     try {
       if (action === 'from-icp') {
         const icp = await menuInput('ICP ID:');
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c); if (!clientId) continue;
         const max = await menuInput('Max leads:', '100');
         printJson(await c.post('/generate/from-icp', { icpId: icp, client_id: clientId, maxLeads: parseInt(max) }));
       } else if (action === 'direct') {
         const provider = await menuInput('Provider name:');
         const config = await menuInput('Config JSON:');
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c); if (!clientId) continue;
         try { printJson(await c.post('/generate/direct', { provider, config: JSON.parse(config), client_id: clientId })); } catch { console.log('Invalid JSON.'); }
       } else if (action === 'status') { printJson(await c.get(`/generate/${await menuInput('Run ID:')}`)); }
       else if (action === 'history') { printJson(await c.get('/generate/history')); }
       else if (action === 'sched-create') {
         const icp = await menuInput('ICP ID:');
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c); if (!clientId) continue;
         const freq = await menuInput('Frequency (daily/weekly/monthly):');
         printJson(await c.post('/generate/schedules', { icpId: icp, client_id: clientId, frequency: freq }));
       } else if (action === 'sched-list') { printJson(await c.get('/generate/schedules')); }
@@ -224,16 +225,16 @@ export async function accountAnalysisMenu() {
     const c = getTuiClient();
     try {
       if (action === 'list') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c); if (!clientId) continue;
         printJson(await c.get(`/account-analysis?client_id=${clientId}`));
       } else if (action === 'analyze') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c); if (!clientId) continue;
         const company = await menuInput('Company filter (or blank):');
         const params = new URLSearchParams({ client_id: clientId });
         if (company) params.append('company', company);
         printJson(await c.get(`/account-analysis/analyze?${params}`));
       } else if (action === 'export') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c); if (!clientId) continue;
         const fmt = await menuInput('Format (csv/json):', 'json');
         printJson(await c.get(`/account-analysis/export?client_id=${clientId}&format=${fmt}`));
       } else if (action === 'cache-clear') {

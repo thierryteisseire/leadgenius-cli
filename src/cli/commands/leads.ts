@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { getClient, formatOutput } from '../index.js';
-import { renderTable } from '../utils.js';
+import { resolveClient } from '../client-picker.js';
 import { readFileSync } from 'fs';
 
 export function registerLeadsCommands(program: Command) {
@@ -9,25 +9,18 @@ export function registerLeadsCommands(program: Command) {
   leads
     .command('list')
     .description('List leads for a specific client')
-    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted)')
     .option('-l, --limit <n>', 'Maximum records', '50')
     .option('-t, --next-token <token>', 'Pagination token')
     .option('-f, --fields <fields>', 'Comma-separated fields')
     .action(async (options) => {
       const client = getClient();
-      const params = new URLSearchParams({ client_id: options.client, limit: options.limit });
+      const clientId = await resolveClient(client, options.client);
+      if (!clientId) return;
+      const params = new URLSearchParams({ client_id: clientId, limit: options.limit });
       if (options.nextToken) params.append('nextToken', options.nextToken);
       if (options.fields) params.append('fields', options.fields);
-      const response = await client.get(`/leads?${params}`);
-      const programOpts = program.opts();
-      if (programOpts.format === 'table' && response.success && Array.isArray(response.data)) {
-        renderTable(
-          ['ID', 'First Name', 'Last Name', 'Email', 'Company', 'Score'],
-          response.data.map((l: any) => [l.id||'', l.firstName||'', l.lastName||'', l.email||'', l.companyName||'', l.aiLeadScore||''])
-        );
-      } else {
-        formatOutput(response);
-      }
+      formatOutput(await client.get(`/leads?${params}`));
     });
 
   leads.command('get <id>').description('Retrieve lead detail').action(async (id) => {
@@ -72,13 +65,13 @@ export function registerLeadsCommands(program: Command) {
   leads
     .command('dedup')
     .description('Find duplicate groups')
-    .requiredOption('-c, --client <id>', 'Client ID')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted)')
     .requiredOption('-m, --match <fields>', 'Match fields (comma-separated)')
     .action(async (options) => {
-      formatOutput(await getClient().post('/leads/deduplicate', {
-        client_id: options.client,
-        matchFields: options.match.split(',')
-      }));
+      const client = getClient();
+      const clientId = await resolveClient(client, options.client);
+      if (!clientId) return;
+      formatOutput(await client.post('/leads/deduplicate', { client_id: clientId, matchFields: options.match.split(',') }));
     });
 
   leads
@@ -87,10 +80,7 @@ export function registerLeadsCommands(program: Command) {
     .requiredOption('--keep <id>', 'Lead ID to keep')
     .requiredOption('--merge <ids>', 'Comma-separated lead IDs to merge')
     .action(async (options) => {
-      formatOutput(await getClient().post('/leads/deduplicate/resolve', {
-        keepLeadId: options.keep,
-        mergeLeadIds: options.merge.split(',')
-      }));
+      formatOutput(await getClient().post('/leads/deduplicate/resolve', { keepLeadId: options.keep, mergeLeadIds: options.merge.split(',') }));
     });
 
   leads
@@ -101,12 +91,7 @@ export function registerLeadsCommands(program: Command) {
     .option('--all', 'Transfer all leads', false)
     .option('--dry-run', 'Preview only', false)
     .action(async (options) => {
-      formatOutput(await getClient().post('/leads/transfer', {
-        fromClientId: options.from,
-        toClientId: options.to,
-        all: options.all,
-        dryRun: options.dryRun
-      }));
+      formatOutput(await getClient().post('/leads/transfer', { fromClientId: options.from, toClientId: options.to, all: options.all, dryRun: options.dryRun }));
     });
 
   leads
@@ -133,28 +118,27 @@ export function registerLeadsCommands(program: Command) {
   leads
     .command('update-batch')
     .description('Batch update leads from CSV')
-    .requiredOption('--client-id <id>', 'Client ID')
+    .option('--client-id <id>', 'Client ID (prompts if omitted)')
     .requiredOption('--field <f>', 'Field to update')
     .requiredOption('--csv <path>', 'CSV file path')
     .action(async (options) => {
+      const client = getClient();
+      const clientId = await resolveClient(client, options.clientId);
+      if (!clientId) return;
       let csvData: string;
       try { csvData = readFileSync(options.csv, 'utf-8'); } catch (e: any) { console.error('Error reading CSV: ' + e.message); return; }
-      formatOutput(await getClient().post('/leads/update-batch', {
-        client_id: options.clientId,
-        field: options.field,
-        csvData
-      }));
+      formatOutput(await client.post('/leads/update-batch', { client_id: clientId, field: options.field, csvData }));
     });
 
   leads
     .command('prune-blanks')
     .description('Remove blank leads')
-    .requiredOption('--client-id <id>', 'Client ID')
+    .option('--client-id <id>', 'Client ID (prompts if omitted)')
     .option('--dry-run', 'Preview only', false)
     .action(async (options) => {
-      formatOutput(await getClient().post('/leads/prune-blanks', {
-        client_id: options.clientId,
-        dryRun: options.dryRun
-      }));
+      const client = getClient();
+      const clientId = await resolveClient(client, options.clientId);
+      if (!clientId) return;
+      formatOutput(await client.post('/leads/prune-blanks', { client_id: clientId, dryRun: options.dryRun }));
     });
 }

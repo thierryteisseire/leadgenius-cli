@@ -1,4 +1,5 @@
 import { getTuiClient, menuSelect, menuInput, menuConfirm, printJson, pause, BACK, backChoice } from './engine.js';
+import { pickClient } from '../client-picker.js';
 
 export async function fsdMenu() {
   while (true) {
@@ -18,7 +19,8 @@ export async function fsdMenu() {
       if (action === 'campaigns') { printJson(await c.get('/fsd/campaigns')); }
       else if (action === 'campaign') { printJson(await c.get(`/fsd/campaigns/${await menuInput('Campaign ID:')}`)); }
       else if (action === 'create') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c);
+        if (!clientId) continue;
         const name = await menuInput('Campaign name:');
         const icp = await menuInput('ICP ID (or blank):');
         const body: any = { client_id: clientId, name };
@@ -34,7 +36,8 @@ export async function fsdMenu() {
         printJson(await c.put(`/fsd/campaigns/${id}`, body));
       } else if (action === 'deactivate') { printJson(await c.delete(`/fsd/campaigns/${await menuInput('Campaign ID:')}`)); }
       else if (action === 'run') {
-        const clientId = await menuInput('Client ID:');
+        const clientId = await pickClient(c);
+        if (!clientId) continue;
         const icp = await menuInput('ICP ID (or blank):');
         const target = await menuInput('Target leads:', '100');
         const enrich = await menuConfirm('Auto-enrich?');
@@ -65,17 +68,23 @@ export async function companiesMenu() {
     if (action === BACK) return;
     const c = getTuiClient();
     try {
-      if (action === 'list') { printJson(await c.get(`/companies?client_id=${await menuInput('Client ID:')}`)); }
+      if (action === 'list') {
+        const cid = await pickClient(c); if (!cid) continue;
+        printJson(await c.get(`/companies?client_id=${cid}`)); }
       else if (action === 'get') { printJson(await c.get(`/companies/${await menuInput('Company ID:')}`)); }
       else if (action === 'leads') { printJson(await c.get(`/companies/${await menuInput('Company ID:')}/leads`)); }
       else if (action === 'content') { printJson(await c.post(`/companies/${await menuInput('Company ID:')}/content-analysis`)); }
-      else if (action === 'aggregate') { printJson(await c.post('/companies/aggregate', { client_id: await menuInput('Client ID:') })); }
+      else if (action === 'aggregate') {
+        const cid = await pickClient(c); if (!cid) continue;
+        printJson(await c.post('/companies/aggregate', { client_id: cid })); }
       else if (action === 'events-list') { printJson(await c.get('/companies/events')); }
       else if (action === 'events-create') {
         const companyId = await menuInput('Company ID:');
         const type = await menuInput('Event type:');
         printJson(await c.post('/companies/events', { companyId, type }));
-      } else if (action === 'events-gen') { printJson(await c.post('/companies/events/generate', { client_id: await menuInput('Client ID:') })); }
+      } else if (action === 'events-gen') {
+        const cid = await pickClient(c); if (!cid) continue;
+        printJson(await c.post('/companies/events/generate', { client_id: cid })); }
       else if (action === 'radar') { printJson(await c.get('/companies/events/radar')); }
     } catch (e: any) { console.error('Error:', e.message); }
     await pause();
