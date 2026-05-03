@@ -186,16 +186,22 @@ export async function maintenanceMenu() {
     if (action === BACK) return;
     const c = getTuiClient();
     try {
-      if (action === 'bugs-list') { printJson(await c.get('/maintenance/bugs')); }
-      else if (action === 'bugs-report') {
+      if (action === 'bugs-list') {
+        const res = await c.get('/tables/Maintenance?limit=100');
+        if (res.success && Array.isArray(res.data)) res.data = res.data.filter((r: any) => r.type === 'bug');
+        printJson(res);
+      } else if (action === 'bugs-report') {
         const desc = await menuInput('Description:');
         const email = await menuInput('Contact email (or blank):');
-        printJson(await c.post('/maintenance/bugs', { description: desc, email: email || undefined }));
-      } else if (action === 'enh-list') { printJson(await c.get('/maintenance/enhancements')); }
-      else if (action === 'enh-request') {
+        printJson(await c.post('/tables/Maintenance', { type: 'bug', description: desc, userEmail: email || undefined, status: 'open' }));
+      } else if (action === 'enh-list') {
+        const res = await c.get('/tables/Maintenance?limit=100');
+        if (res.success && Array.isArray(res.data)) res.data = res.data.filter((r: any) => r.type === 'enhancement');
+        printJson(res);
+      } else if (action === 'enh-request') {
         const desc = await menuInput('Description:');
         const email = await menuInput('Contact email (or blank):');
-        printJson(await c.post('/maintenance/enhancements', { description: desc, email: email || undefined }));
+        printJson(await c.post('/tables/Maintenance', { type: 'enhancement', description: desc, userEmail: email || undefined, status: 'open' }));
       }
     } catch (e: any) { console.error('Error:', e.message); }
     await pause();

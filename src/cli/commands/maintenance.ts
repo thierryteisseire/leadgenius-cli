@@ -7,7 +7,12 @@ export function registerMaintenanceCommands(program: Command) {
   const bugs = maintenance.command('bugs').description('Bug reports');
 
   bugs.command('list').description('List bug reports').action(async () => {
-    formatOutput(await getClient().get('/maintenance/bugs'));
+    const c = getClient();
+    const res = await c.get('/tables/Maintenance?limit=100');
+    if (res.success && Array.isArray(res.data)) {
+      res.data = res.data.filter((r: any) => r.type === 'bug');
+    }
+    formatOutput(res);
   });
 
   bugs
@@ -16,13 +21,23 @@ export function registerMaintenanceCommands(program: Command) {
     .requiredOption('--desc <text>', 'Bug description')
     .option('--email <email>', 'Contact email')
     .action(async (options) => {
-      formatOutput(await getClient().post('/maintenance/bugs', { description: options.desc, email: options.email }));
+      formatOutput(await getClient().post('/tables/Maintenance', {
+        type: 'bug',
+        description: options.desc,
+        userEmail: options.email,
+        status: 'open',
+      }));
     });
 
   const enhancements = maintenance.command('enhancements').description('Enhancement requests');
 
   enhancements.command('list').description('List enhancement requests').action(async () => {
-    formatOutput(await getClient().get('/maintenance/enhancements'));
+    const c = getClient();
+    const res = await c.get('/tables/Maintenance?limit=100');
+    if (res.success && Array.isArray(res.data)) {
+      res.data = res.data.filter((r: any) => r.type === 'enhancement');
+    }
+    formatOutput(res);
   });
 
   enhancements
@@ -31,6 +46,11 @@ export function registerMaintenanceCommands(program: Command) {
     .requiredOption('--desc <text>', 'Enhancement description')
     .option('--email <email>', 'Contact email')
     .action(async (options) => {
-      formatOutput(await getClient().post('/maintenance/enhancements', { description: options.desc, email: options.email }));
+      formatOutput(await getClient().post('/tables/Maintenance', {
+        type: 'enhancement',
+        description: options.desc,
+        userEmail: options.email,
+        status: 'open',
+      }));
     });
 }
