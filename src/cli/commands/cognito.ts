@@ -6,10 +6,15 @@ export function registerCognitoCommands(program: Command) {
 
   cognito
     .command('list')
-    .description('List Cognito users')
+    .description('List Cognito users (requires admin key)')
     .option('-l, --limit <n>', 'Maximum users (max 60)', '20')
     .action(async (options) => {
-      formatOutput(await getClient().get(`/users/cognito?limit=${options.limit}`));
+      const c = getClient();
+      if (!program.opts().adminKey) {
+        console.error('\n  ⚠️  cognito list requires --admin-key (returns all platform users).\n');
+        return;
+      }
+      formatOutput(await c.get(`/users/cognito?limit=${options.limit}`));
     });
 
   cognito
