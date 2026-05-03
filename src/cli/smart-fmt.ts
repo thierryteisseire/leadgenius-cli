@@ -16,7 +16,7 @@ function fmtVal(key: string, val: any): string {
   if (typeof val === 'boolean') return val ? '\x1b[32m✓\x1b[0m' : '\x1b[90m✗\x1b[0m';
   if ((key.endsWith('At') || key === 'created' || key === 'modified' || key === 'lastUpdated') && typeof val === 'string' && val.includes('T'))
     return fmtDate(val);
-  if (Array.isArray(val)) return val.length === 0 ? '\x1b[90m—\x1b[0m' : val.join(', ');
+  if (Array.isArray(val)) return val.length === 0 ? '\x1b[90m—\x1b[0m' : typeof val[0] === 'object' ? `(${val.length} items)` : val.join(', ');
   if (typeof val === 'object') return JSON.stringify(val);
   return String(val);
 }
@@ -53,7 +53,8 @@ const COL_MAX: Record<string, number> = {
   id: 9, email: 28, companyName: 22, firstName: 12, lastName: 12, fullName: 16,
   title: 30, status: 12, role: 8, group: 8, name: 24, clientName: 28,
   plan: 10, type: 12, platform: 12, description: 30, createdAt: 16, updatedAt: 16,
-  created: 16, username: 20, enabled: 3,
+  created: 16, username: 20, enabled: 3, matchField: 12, confidence: 10,
+  matchValue: 30, leadIds: 40,
 };
 
 // Preferred display columns per context
@@ -112,12 +113,23 @@ function printTable(items: any[]) {
 
 function printRecord(obj: Record<string, any>) {
   const keys = Object.keys(obj).filter(k => k !== 'requestId');
-  const maxLabel = Math.min(Math.max(...keys.map(k => label(k).length), 8), 20);
-  for (const key of keys) {
-    const val = obj[key];
-    const lbl = label(key).padEnd(maxLabel);
-    const formatted = fmtVal(key, val);
-    console.log(`  ${lbl}  ${formatted}`);
+  // Separate scalar fields from array/object fields
+  const scalars = keys.filter(k => !Array.isArray(obj[k]) || (Array.isArray(obj[k]) && obj[k].length > 0 && typeof obj[k][0] !== 'object'));
+  const nested = keys.filter(k => Array.isArray(obj[k]) && obj[k].length > 0 && typeof obj[k][0] === 'object');
+
+  if (scalars.length > 0) {
+    const maxLabel = Math.min(Math.max(...scalars.map(k => label(k).length), 8), 22);
+    for (const key of scalars) {
+      const lbl = label(key).padEnd(maxLabel);
+      console.log(`  ${lbl}  ${fmtVal(key, obj[key])}`);
+    }
+  }
+
+  // Render nested arrays of objects as sub-tables
+  for (const key of nested) {
+    const items = obj[key];
+    console.log(`\n  \x1b[1m${label(key)}\x1b[0m (${items.length})\n`);
+    printTable(items);
   }
 }
 
