@@ -148,6 +148,7 @@ export function smartFormat(res: any) {
     if (items.length > 0 && typeof items[0] === 'object') printTable(items);
     else for (const item of items) console.log(`  • ${item}`);
     if (data.count !== undefined && data.count !== items.length) console.log(`\n  \x1b[90mTotal: ${data.count}\x1b[0m`);
+    if (items.length === 0 && res.details) console.log(`  \x1b[33m💡 ${res.details}\x1b[0m`);
   } else if (typeof data === 'object') {
     printRecord(data);
   } else {

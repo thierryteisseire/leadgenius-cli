@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { getClient, formatOutput } from '../index.js';
 import { resolveClient } from '../client-picker.js';
+import { smartSearch } from '../smart-search.js';
 import { readFileSync } from 'fs';
 
 export function registerLeadsCommands(program: Command) {
@@ -53,31 +54,23 @@ export function registerLeadsCommands(program: Command) {
     .option('--linkedin-url <url>')
     .option('--client <id>')
     .action(async (options) => {
-      const params = new URLSearchParams();
+      const c = getClient();
+      const extra: Record<string, string> = {};
+      if (options.client) extra.client_id = options.client;
+
       if (options.query) {
-        const q = options.query.trim();
-        if (q.includes('@')) params.append('email', q);
-        else if (q.startsWith('http') || q.includes('.com') || q.includes('.io') || q.includes('.fr')) {
-          if (q.includes('linkedin')) params.append('linkedinUrl', q);
-          else params.append('companyUrl', q);
-        } else {
-          const parts = q.split(/\s+/);
-          params.append('firstName', parts[0]);
-          if (parts.length > 1) params.append('lastName', parts.slice(1).join(' '));
-        }
+        formatOutput(await smartSearch(c, options.query, extra));
       } else {
+        // Explicit flags
+        const params = new URLSearchParams(extra);
         if (options.email) params.append('email', options.email);
         if (options.firstName) params.append('firstName', options.firstName);
         if (options.lastName && options.firstName) params.append('lastName', options.lastName);
-        else if (options.lastName && !options.firstName) {
-          // lastName alone won't work — use it as firstName to at least search something
-          params.append('firstName', options.lastName);
-        }
+        else if (options.lastName) params.append('firstName', options.lastName);
         if (options.companyUrl) params.append('companyUrl', options.companyUrl);
         if (options.linkedinUrl) params.append('linkedinUrl', options.linkedinUrl);
+        formatOutput(await c.get(`/leads/search?${params}`));
       }
-      if (options.client) params.append('client_id', options.client);
-      formatOutput(await getClient().get(`/leads/search?${params}`));
     });
 
   leads

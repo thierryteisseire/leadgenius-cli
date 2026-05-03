@@ -1,5 +1,6 @@
 import { getTuiClient, menuSelect, menuInput, menuConfirm, printJson, pause, BACK, backChoice } from './engine.js';
 import { pickClient } from '../client-picker.js';
+import { smartSearch } from '../smart-search.js';
 
 export async function authMenu() {
   printJson(await getTuiClient().get('/auth/test'));
@@ -36,20 +37,7 @@ export async function leadsMenu() {
       } else if (action === 'search') {
         const query = await menuInput('Search (email, name, URL):');
         if (!query) continue;
-        const params = new URLSearchParams();
-        const q = query.trim();
-        if (q.includes('@')) {
-          params.append('email', q);
-        } else if (q.startsWith('http') || q.includes('.com') || q.includes('.io') || q.includes('.fr')) {
-          if (q.includes('linkedin')) params.append('linkedinUrl', q);
-          else params.append('companyUrl', q);
-        } else {
-          // Name search: split into first/last
-          const parts = q.split(/\s+/);
-          params.append('firstName', parts[0]);
-          if (parts.length > 1) params.append('lastName', parts.slice(1).join(' '));
-        }
-        printJson(await c.get(`/leads/search?${params}`));
+        printJson(await smartSearch(c, query));
       } else if (action === 'import') {
         const data = await menuInput('JSON data (array or object):');
         try { printJson(await c.post('/leads/import', JSON.parse(data))); } catch { console.log('Invalid JSON.'); }
