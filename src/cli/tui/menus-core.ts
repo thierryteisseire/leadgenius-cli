@@ -39,8 +39,26 @@ export async function leadsMenu() {
         if (!query) continue;
         printJson(await smartSearch(c, query));
       } else if (action === 'import') {
-        const data = await menuInput('JSON data (array or object):');
-        try { printJson(await c.post('/leads/import', JSON.parse(data))); } catch { console.log('Invalid JSON.'); }
+        const file = await menuInput('File path (CSV or JSON):');
+        if (!file) continue;
+        const { readFileSync } = await import('fs');
+        let body: any;
+        try {
+          const content = readFileSync(file, 'utf-8');
+          if (file.endsWith('.csv')) {
+            const { parseCsv } = await import('../csv-parser.js');
+            const leads = parseCsv(content);
+            if (leads.length === 0) { console.log('No leads found in CSV.'); await pause(); continue; }
+            const clientId = await pickClient(c);
+            if (!clientId) continue;
+            leads.forEach((l: any) => l.client_id = clientId);
+            console.log(`  Importing ${leads.length} leads from CSV...`);
+            body = { leads };
+          } else {
+            body = JSON.parse(content);
+          }
+        } catch (e: any) { console.log('Error reading file: ' + e.message); await pause(); continue; }
+        printJson(await c.post('/leads/import', body));
       } else if (action === 'dedup') {
         const clientId = await pickClient(c);
         if (!clientId) continue;

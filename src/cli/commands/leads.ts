@@ -30,17 +30,32 @@ export function registerLeadsCommands(program: Command) {
 
   leads
     .command('import')
-    .description('Import leads (single or batch)')
-    .option('--file <path>', 'JSON file path')
+    .description('Import leads from CSV, JSON file, or inline JSON')
+    .option('--file <path>', 'CSV or JSON file path')
     .option('--data <json>', 'Inline JSON data')
+    .option('-c, --client <id>', 'Client ID (prompts if omitted, required for CSV)')
+    .option('--strict', 'Reject on duplicates', false)
     .action(async (options) => {
+      const c = getClient();
       let body: any;
       if (options.file) {
-        try { body = JSON.parse(readFileSync(options.file, 'utf-8')); } catch (e: any) { console.error('Error reading file: ' + e.message); return; }
+        const content = readFileSync(options.file, 'utf-8');
+        if (options.file.endsWith('.csv')) {
+          const { parseCsv } = await import('../csv-parser.js');
+          const leads = parseCsv(content);
+          if (leads.length === 0) { console.error('Error: No leads found in CSV.'); return; }
+          const clientId = await resolveClient(c, options.client);
+          if (!clientId) return;
+          leads.forEach(l => l.client_id = clientId);
+          console.log(`  Importing ${leads.length} leads from CSV...`);
+          body = { leads, strictMode: options.strict };
+        } else {
+          try { body = JSON.parse(content); } catch (e: any) { console.error('Error: Invalid JSON. ' + e.message); return; }
+        }
       } else if (options.data) {
         try { body = JSON.parse(options.data); } catch (e: any) { console.error('Error: Invalid JSON. ' + e.message); return; }
       } else { console.error('Error: --file or --data required.'); return; }
-      formatOutput(await getClient().post('/leads/import', body));
+      formatOutput(await c.post('/leads/import', body));
     });
 
   leads
