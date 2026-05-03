@@ -1,4 +1,5 @@
 import { getTuiClient, menuSelect, menuInput, menuPassword, menuConfirm, printJson, pause, BACK, backChoice, cognitoAuth, epsimoExchange } from './engine.js';
+import { formatEpsimo as fmtEpsimo } from '../epsimo-fmt.js';
 
 export async function usersMenu() {
   while (true) {
@@ -180,12 +181,12 @@ export async function epsimoMenu() {
       const token = await ensureToken();
       if (!token) continue;
       const h = { extraHeaders: { 'X-Epsimo-Token': token } };
-      if (action === 'info') printJson(await c.get('/epsimo/users/info', h));
-      else if (action === 'credits') printJson(await c.get('/epsimo/credits/balance', h));
+      if (action === 'info') fmtEpsimo('info', await c.get('/epsimo/users/info', h));
+      else if (action === 'credits') fmtEpsimo('credits', await c.get('/epsimo/credits/balance', h));
       else if (action === 'purchase') {
         const amount = await menuInput('Amount (integer):');
-        printJson(await c.post('/epsimo/credits/purchase', { amount: parseInt(amount) }, h));
-      } else if (action === 'threads') printJson(await c.get('/epsimo/threads', h));
+        fmtEpsimo('purchase', await c.post('/epsimo/credits/purchase', { amount: parseInt(amount) }, h));
+      } else if (action === 'threads') fmtEpsimo('threads', await c.get('/epsimo/threads', h));
     } catch (e: any) { console.error('Error:', e.message); }
     await pause();
   }

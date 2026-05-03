@@ -1,5 +1,13 @@
 import { Command } from 'commander';
 import { getClient, formatOutput } from '../index.js';
+import { formatEpsimo } from '../epsimo-fmt.js';
+
+function out(action: string, program: Command) {
+  return (res: any) => {
+    if (program.opts().format === 'json' && process.argv.includes('--format')) { formatOutput(res); return; }
+    formatEpsimo(action, res);
+  };
+}
 
 export function registerEpsimoCommands(program: Command) {
   const epsimo = program.command('epsimo').description('EpsimoAI commands');
@@ -15,7 +23,7 @@ export function registerEpsimoCommands(program: Command) {
       if (options.cognitoToken) body.cognitoIdToken = options.cognitoToken;
       else if (options.email && options.password) { body.email = options.email; body.password = options.password; }
       else { console.error('Error: --cognito-token or --email and --password required.'); return; }
-      formatOutput(await getClient().post('/epsimo/users/activate', body));
+      out('activate', program)(await getClient().post('/epsimo/users/activate', body));
     });
 
   epsimo
@@ -23,7 +31,7 @@ export function registerEpsimoCommands(program: Command) {
     .description('Get user profile and plan')
     .requiredOption('-t, --token <token>', 'EpsimoAI token')
     .action(async (options) => {
-      formatOutput(await getClient().get('/epsimo/users/info', { extraHeaders: { 'X-Epsimo-Token': options.token } }));
+      out('info', program)(await getClient().get('/epsimo/users/info', { extraHeaders: { 'X-Epsimo-Token': options.token } }));
     });
 
   epsimo
@@ -31,7 +39,7 @@ export function registerEpsimoCommands(program: Command) {
     .description('Check credit balance')
     .requiredOption('-t, --token <token>', 'EpsimoAI token')
     .action(async (options) => {
-      formatOutput(await getClient().get('/epsimo/credits/balance', { extraHeaders: { 'X-Epsimo-Token': options.token } }));
+      out('credits', program)(await getClient().get('/epsimo/credits/balance', { extraHeaders: { 'X-Epsimo-Token': options.token } }));
     });
 
   epsimo
@@ -40,7 +48,7 @@ export function registerEpsimoCommands(program: Command) {
     .requiredOption('-t, --token <token>', 'EpsimoAI token')
     .requiredOption('-a, --amount <n>', 'Credit amount (integer)')
     .action(async (options) => {
-      formatOutput(await getClient().post('/epsimo/credits/purchase', { amount: parseInt(options.amount) }, { extraHeaders: { 'X-Epsimo-Token': options.token } }));
+      out('purchase', program)(await getClient().post('/epsimo/credits/purchase', { amount: parseInt(options.amount) }, { extraHeaders: { 'X-Epsimo-Token': options.token } }));
     });
 
   epsimo
@@ -48,6 +56,6 @@ export function registerEpsimoCommands(program: Command) {
     .description('Thread usage and percentage')
     .requiredOption('-t, --token <token>', 'EpsimoAI token')
     .action(async (options) => {
-      formatOutput(await getClient().get('/epsimo/threads', { extraHeaders: { 'X-Epsimo-Token': options.token } }));
+      out('threads', program)(await getClient().get('/epsimo/threads', { extraHeaders: { 'X-Epsimo-Token': options.token } }));
     });
 }
