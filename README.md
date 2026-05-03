@@ -133,6 +133,9 @@ Full lead lifecycle: list, get, import, search, deduplicate, transfer, and engag
 | `GET` | `/api/automation/leads/{id}/activities` | Get engagement history |
 | `POST` | `/api/automation/leads/{id}/activities` | Log engagement activities (single or batch) |
 | `POST` | `/api/automation/leads/validate-ownership` | Scan for orphaned/mismatched leads |
+| `DELETE` | `/api/automation/leads/{id}` | Soft-delete a lead (sets `status: "to_be_deleted"`) |
+| `POST` | `/api/automation/leads/{id}/restore` | Restore a soft-deleted lead to `active` status |
+| `POST` | `/api/automation/leads/purge` | Permanently delete soft-deleted leads (admin only, optional `olderThan`/`client_id` filters) |
 
 **Key behaviors:**
 - `owner` and `company_id` are auto-set from API key on import
@@ -440,6 +443,9 @@ All commands use the syntax: `npx tsx src/scripts/lgp.ts <group> <command> [opti
 | `leads activities <leadId>` | Get engagement history |
 | `leads update-batch --client-id <id> --field <f> --csv <path>` | Batch update leads from CSV |
 | `leads prune-blanks --client-id <id>` | Remove blank leads (`--dry-run`) |
+| `leads delete <id>` | Soft-delete a lead |
+| `leads restore <id>` | Restore a soft-deleted lead |
+| `leads purge` | Permanently delete soft-deleted leads (`--client`, `--older-than`) |
 
 ### tasks
 

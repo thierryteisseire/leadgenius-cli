@@ -100,10 +100,11 @@ List EnrichLeads by `client_id`, sorted by `createdAt` descending. Supports fiel
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `client_id` | string | Yes | — | Client to list leads for. Use `__orphaned__` to find leads with missing client_id. |
+| `client_id` | string | Yes | — | Client to list leads for |
 | `fields` | string | No | default set | Comma-separated field names to return |
-| `limit` | integer | No | 50 | Max records per page (capped at 50). Use `nextToken` to paginate. |
+| `limit` | integer | No | 50 | Max records (capped at 500) |
 | `nextToken` | string | No | — | Pagination token from previous response |
+| `includeDeleted` | boolean | No | `false` | When `true`, include soft-deleted leads (`status: "to_be_deleted"`) in the listing |
 
 **Default fields returned:** `id`, `firstName`, `lastName`, `fullName`, `email`, `linkedinUrl`, `companyName`, `title`, `status`, `client_id`, `company_id`, `createdAt`, `updatedAt`.
 
@@ -233,9 +234,37 @@ Any additional EnrichLead fields can be included. Unknown fields are silently st
 |-------|------|----------|---------|-------------|
 | `leads` | array | Yes | — | Array of lead objects (max 500). Each object uses the same fields as single-lead import. |
 
+**Additional Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `strictMode` | boolean | No | `false` | When `true`, rejects import if a duplicate is found (409 Conflict). For batch imports, rejects the entire batch if any duplicate is detected. |
+| `verificationLevels` | object | No | all `true` | Configure which identity verification levels to use: `{email: bool, linkedinUrl: bool, companyFullName: bool}`. All default to `true`. |
+
+**Request Headers:**
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | API key for authentication |
+| `X-Idempotency-Key` | No | Optional. Same key within 24 hours returns the cached response instead of re-importing. |
+
 **Key behaviors:**
-- Cross-client duplicate detection by `email` / `linkedinUrl` (warning only, not blocking)
+- Cross-client duplicate detection by `email` / `linkedinUrl` (warning only in default mode, blocking in `strictMode`)
 - Max batch size: 500 leads
+- Identity verification via `email`, `linkedinUrl`, and `companyFullName` fields (configurable via `verificationLevels`)
+- In default mode (non-strict), duplicates are upserted (existing record updated)
+- In `strictMode`, duplicates cause a 409 rejection; for batch imports, the entire batch is rejected if any lead matches
+
+**Error Codes:**
+
+| Code | HTTP | Description |
+|------|------|-------------|
+| `DUPLICATE_DETECTED` | 409 | Single lead duplicate found (strictMode) |
+| `BATCH_DUPLICATE_DETECTED` | 409 | Batch rejected due to duplicate at a specific index (strictMode) |
+| `DEDUP_FAILED` | 503 | Deduplication check failed (service error) |
+| `DEDUP_TIMEOUT` | 503 | Deduplication check timed out |
+| `INVALID_CONFIG` | 400 | Invalid configuration (e.g., strictMode with all verification levels disabled) |
+| `BATCH_TOO_LARGE` | 400 | Batch exceeds maximum of 500 leads |
 
 **Response:**
 

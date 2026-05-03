@@ -46,16 +46,45 @@ X-API-Key: lgp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | Per hour   | 1,000 requests   |
 | Per day    | 10,000 requests  |
 
+### Admin Key (Rate Limit Bypass)
+
+An optional `X-Admin-Key` header can be sent alongside `X-API-Key` to bypass application-level rate limits:
+
+```
+X-API-Key: lgp_your_key_here
+X-Admin-Key: your_admin_key_here
+```
+
+**Behavior:**
+- When both `X-API-Key` and `X-Admin-Key` are present, the API key is validated normally (real company context is preserved) and rate limits are skipped.
+- When only `X-Admin-Key` is present (no API key), the request runs as `admin-master-company` — only useful for admin-only endpoints like `/api/admin/*`.
+- The admin key does **not** bypass AWS WAF rules. Rapid bursts of requests from the same IP will still be blocked at the infrastructure level regardless of the admin key.
+
+**Important for AI agents:** Always include `X-API-Key` alongside `X-Admin-Key`. Using the admin key alone will cause company-scoped queries (leads, settings, tasks) to return empty results because they filter by `admin-master-company`.
+
+### AWS WAF Throttling
+
+The API is protected by AWS WAF, which blocks IPs after too many requests in a short window. This is separate from the application rate limiter and cannot be bypassed by the admin key.
+
+**Best practices for AI agents:**
+- Add 3-5 second delays between consecutive API calls
+- Use exponential backoff on connection failures (`fetch failed` errors)
+- Batch operations where possible (e.g., `leads import` with a `leads` array instead of individual imports)
+- If you get repeated connection failures, wait 60 seconds before retrying
+
 ---
 
 ## Prerequisites Checklist
 
 Before running enrichment, copyright, scoring, or FSD pipelines, the following configuration records must exist. Create them via the Tables API (`POST /api/automation/tables/{tableName}`).
 
+> **Note on settings creation:** The `AgentSettings`, `SdrAiSettings`, and `UrlSettings` tables do not accept `company_id` or `owner` in the create input — these are managed automatically. The Tables API handles this by stripping these fields during creation and setting `company_id` via a post-creation update. When creating settings via direct GraphQL, create the record first, then update it to set `company_id`.
+
 ### UrlSettings (required for enrichment)
 
 | Field                | Description                              |
 |----------------------|------------------------------------------|
+| `apifyApiKey`        | Apify API key for lead generation        |
 | `companyUrl`         | Company URL lookup service endpoint      |
 | `companyUrl_Apikey`  | API key for company URL service          |
 | `emailFinder`        | Email finder service endpoint            |
@@ -151,6 +180,25 @@ The `lgp` CLI is the recommended interface. Run via `npx tsx src/scripts/lgp.ts 
 | `epsimo`           | [references/cli_reference.md#epsimoai-commands](references/cli_reference.md#epsimoai-commands) |
 | `admin`            | [references/cli_reference.md#admin](references/cli_reference.md#admin) |
 | `account-analysis` | [references/cli_reference.md#account-analysis](references/cli_reference.md#account-analysis) |
+
+---
+
+## E2E Pipeline Testing
+
+A comprehensive E2E test script validates the full autonomous lead lifecycle across 15 pipeline phases:
+
+```bash
+# Run the full E2E test suite
+LGP_API_KEY=your-key npx tsx src/scripts/test-e2e-pipeline.ts
+
+# Run against a specific URL
+LGP_API_KEY=your-key LGP_URL=https://api.leadgenius.app npx tsx src/scripts/test-e2e-pipeline.ts
+
+# Preserve test data after execution
+LGP_API_KEY=your-key npx tsx src/scripts/test-e2e-pipeline.ts --skip-cleanup
+```
+
+The test covers: auth → client management → settings verification → ICP creation → lead import/CRUD → lead search → lead generation → enrichment → copyright → scoring → task tracking → skill doc accuracy → pipeline analytics → campaigns → cleanup.
 
 ---
 
